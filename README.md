@@ -29,20 +29,6 @@ dotnet build .\OpenGarrison.sln -c Debug
 
 OpenGarrison targets .NET 10.
 
-## Plugins
-
-- The plugin system now supports manifest-driven packaged plugins with
-  `plugin.json`.
-- Lua is the default direction for plugin authoring going forward.
-- Packaged runtime outputs now ship the Lua plugin packages by default rather
-  than the legacy CLR plugin implementations.
-- Barebones Lua hosts exist on both server and client.
-- Server Lua currently covers event-driven plugins, bounded mutation surfaces,
-  replicated state, and plugin messaging.
-- Client Lua currently covers menu/main-menu integration, HUD and scoreboard
-  drawing, lightweight audio playback, config-backed options, camera offsets,
-  dead-body rendering, and bubble-menu overrides for presentation plugins.
-- See [Plugins/README.md](C:/Users/level/Desktop/OpenGarrison%20Active/OpenGarrison-Fork/Plugins/README.md), [Plugins/PLUGIN_HOST_CONTRACT.md](C:/Users/level/Desktop/OpenGarrison%20Active/OpenGarrison-Fork/Plugins/PLUGIN_HOST_CONTRACT.md), and [Plugins/Templates/README.md](C:/Users/level/Desktop/OpenGarrison%20Active/OpenGarrison-Fork/Plugins/Templates/README.md) for plugin conventions, engine seam rules, authoring templates, and packaged examples.
 
 ## Run
 
