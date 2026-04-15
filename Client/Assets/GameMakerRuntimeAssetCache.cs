@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using OpenGarrison.Core;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Audio;
@@ -32,15 +33,39 @@ public sealed class GameMakerRuntimeAssetCache : IDisposable
             return cached;
         }
 
-        if (!_manifest.Sprites.TryGetValue(spriteName, out var spriteAsset) || spriteAsset.FramePaths.Count == 0)
+        if (!_manifest.Sprites.TryGetValue(spriteName, out var spriteAsset))
         {
             return null;
         }
 
-        var frames = new Texture2D[spriteAsset.FramePaths.Count];
-        for (var frameIndex = 0; frameIndex < spriteAsset.FramePaths.Count; frameIndex += 1)
+        var framePaths = spriteAsset.FramePaths;
+        if (framePaths.Count <= 1)
         {
-            var framePath = spriteAsset.FramePaths[frameIndex];
+            var metadataDirectory = Path.GetDirectoryName(spriteAsset.MetadataPath) ?? string.Empty;
+            var imagesDirectory = Path.Combine(metadataDirectory, $"{spriteAsset.Name}.images");
+            if (Directory.Exists(imagesDirectory))
+            {
+                var discoveredFramePaths = Directory
+                    .GetFiles(imagesDirectory, "*.png", SearchOption.TopDirectoryOnly)
+                    .OrderBy(path => ExtractTrailingNumber(Path.GetFileNameWithoutExtension(path)))
+                    .ThenBy(path => path, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                if (discoveredFramePaths.Length > framePaths.Count)
+                {
+                    framePaths = discoveredFramePaths;
+                }
+            }
+        }
+
+        if (framePaths.Count == 0)
+        {
+            return null;
+        }
+
+        var frames = new Texture2D[framePaths.Count];
+        for (var frameIndex = 0; frameIndex < framePaths.Count; frameIndex += 1)
+        {
+            var framePath = framePaths[frameIndex];
             if (!File.Exists(framePath))
             {
                 return null;
@@ -53,6 +78,14 @@ public sealed class GameMakerRuntimeAssetCache : IDisposable
         cached = new LoadedGameMakerSprite(frames, new Point(spriteAsset.OriginX, spriteAsset.OriginY));
         _sprites[spriteName] = cached;
         return cached;
+    }
+
+    private static int ExtractTrailingNumber(string fileNameWithoutExtension)
+    {
+        var trailingDigits = new string(fileNameWithoutExtension.Reverse().TakeWhile(char.IsDigit).Reverse().ToArray());
+        return int.TryParse(trailingDigits, out var value)
+            ? value
+            : int.MaxValue;
     }
 
     public Texture2D? GetBackground(string backgroundName)

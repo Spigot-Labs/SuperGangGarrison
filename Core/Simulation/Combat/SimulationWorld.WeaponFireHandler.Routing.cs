@@ -50,6 +50,7 @@ public sealed partial class SimulationWorld
                 aimWorldX,
                 aimWorldY,
                 PlayerClass.Engineer,
+                pelletSpawnDistance: 20f,
                 killFeedWeaponSpriteNameOverride: "ShotgunKL");
         }
 

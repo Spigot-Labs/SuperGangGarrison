@@ -49,6 +49,7 @@ sealed class GameServer
     private readonly int _autoBalanceDelaySeconds;
     private readonly int _autoBalanceNewPlayerGraceSeconds;
     private readonly bool _autoBalanceEnabled;
+    private readonly bool _secondaryAbilitiesEnabled;
     private readonly int? _timeLimitMinutesOverride;
     private readonly int? _capLimitOverride;
     private readonly int? _respawnSecondsOverride;
@@ -101,6 +102,7 @@ sealed class GameServer
         int autoBalanceDelaySeconds,
         int autoBalanceNewPlayerGraceSeconds,
         bool autoBalanceEnabled,
+        bool secondaryAbilitiesEnabled,
         int? timeLimitMinutesOverride,
         int? capLimitOverride,
         int? respawnSecondsOverride,
@@ -129,6 +131,7 @@ sealed class GameServer
         _autoBalanceDelaySeconds = autoBalanceDelaySeconds;
         _autoBalanceNewPlayerGraceSeconds = autoBalanceNewPlayerGraceSeconds;
         _autoBalanceEnabled = autoBalanceEnabled;
+        _secondaryAbilitiesEnabled = secondaryAbilitiesEnabled;
         _timeLimitMinutesOverride = timeLimitMinutesOverride;
         _capLimitOverride = capLimitOverride;
         _respawnSecondsOverride = respawnSecondsOverride;
@@ -261,6 +264,7 @@ sealed class GameServer
             _autoBalanceDelaySeconds,
             _autoBalanceNewPlayerGraceSeconds,
             _autoBalanceEnabled,
+            _secondaryAbilitiesEnabled,
             _timeLimitMinutesOverride,
             _capLimitOverride,
             _respawnSecondsOverride,
@@ -320,6 +324,7 @@ sealed class GameServer
             Console.WriteLine($"Respawn: {_respawnSecondsOverride.Value} seconds");
         }
         Console.WriteLine($"Auto-balance: {(_autoBalanceEnabled ? "Enabled" : "Disabled")}");
+        Console.WriteLine($"Secondary abilities: {(_secondaryAbilitiesEnabled ? "Enabled" : "Disabled")}");
         Console.WriteLine($"Level: {_world.Level.Name} area={_world.Level.MapAreaIndex}/{_world.Level.MapAreaCount} imported={_world.Level.ImportedFromSource} mode={_world.MatchRules.Mode}");
         Console.WriteLine($"World bounds: {_world.Bounds.Width}x{_world.Bounds.Height}");
         Console.WriteLine($"Event log: {eventLog.FilePath}");

@@ -102,4 +102,10 @@ public partial class Game1
         get => _hostSetupState.AutoBalanceEnabled;
         set => _hostSetupState.AutoBalanceEnabled = value;
     }
+
+    private bool _hostSecondaryAbilitiesEnabled
+    {
+        get => _hostSetupState.SecondaryAbilitiesEnabled;
+        set => _hostSetupState.SecondaryAbilitiesEnabled = value;
+    }
 }

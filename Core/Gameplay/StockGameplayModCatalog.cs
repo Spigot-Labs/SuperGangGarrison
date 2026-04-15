@@ -310,6 +310,16 @@ public static class StockGameplayModCatalog
             ["ability.medic-uber"] = CreateAbilityItem("ability.medic-uber", "UberCharge", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.MedicUber),
             ["ability.spy-cloak"] = CreateAbilityItem("ability.spy-cloak", "Invisibility Watch", GameplayEquipmentSlot.Secondary, BuiltInGameplayBehaviorIds.SpyCloak),
             ["ability.quote-blade-throw"] = CreateAbilityItem("ability.quote-blade-throw", "Blade Throw", GameplayEquipmentSlot.Secondary, BuiltInGameplayBehaviorIds.QuoteBladeThrow),
+
+            ["ability.scout-utility"] = CreateAbilityItem("ability.scout-utility", "Scout Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.ScoutUtility),
+            ["ability.engineer-utility"] = CreateAbilityItem("ability.engineer-utility", "Engineer Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.EngineerUtility),
+            ["ability.pyro-utility"] = CreateAbilityItem("ability.pyro-utility", "Pyro Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.PyroUtility),
+            ["ability.soldier-utility"] = CreateAbilityItem("ability.soldier-utility", "Soldier Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.SoldierSecondaryWeapon),
+            ["ability.demoman-utility"] = CreateAbilityItem("ability.demoman-utility", "Demoman Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.DemomanUtility),
+            ["ability.heavy-utility"] = CreateAbilityItem("ability.heavy-utility", "Heavy Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.HeavyUtility),
+            ["ability.sniper-utility"] = CreateAbilityItem("ability.sniper-utility", "Sniper Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.SniperUtility),
+            ["ability.spy-utility"] = CreateAbilityItem("ability.spy-utility", "Spy Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.SpyUtility),
+            ["ability.quote-utility"] = CreateAbilityItem("ability.quote-utility", "Quote Utility", GameplayEquipmentSlot.Utility, BuiltInGameplayBehaviorIds.QuoteUtility),
         };
 
         var classes = new Dictionary<string, GameplayClassDefinition>(StringComparer.Ordinal)
@@ -318,37 +328,37 @@ public static class StockGameplayModCatalog
                 "scout",
                 "Scout",
                 new GameplayClassMovementDefinition(100, -6f, -10f, 7f, 24f, 1.4f, LegacyMovementModel.DefaultJumpStrength, 1, 8),
-                CreateLoadout("scout.stock", "Stock", "weapon.scattergun")),
+                CreateLoadout("scout.stock", "Stock", "weapon.scattergun", utilityItemId: "ability.scout-utility")),
             ["engineer"] = CreateClass(
                 "engineer",
                 "Engineer",
                 new GameplayClassMovementDefinition(120, -6f, -10f, 7f, 24f, 1f, LegacyMovementModel.DefaultJumpStrength, 0, 12),
-                CreateLoadout("engineer.stock", "Stock", "weapon.shotgun", secondaryItemId: "ability.engineer-pda")),
+                CreateLoadout("engineer.stock", "Stock", "weapon.shotgun", secondaryItemId: "ability.engineer-pda", utilityItemId: "ability.engineer-utility")),
             ["pyro"] = CreateClass(
                 "pyro",
                 "Pyro",
                 new GameplayClassMovementDefinition(120, -7f, -6f, 8f, 24f, 1.1f, LegacyMovementModel.DefaultJumpStrength, 0, 9),
-                CreateLoadout("pyro.stock", "Stock", "weapon.flamethrower", secondaryItemId: "ability.pyro-airblast")),
+                CreateLoadout("pyro.stock", "Stock", "weapon.flamethrower", secondaryItemId: "ability.pyro-airblast", utilityItemId: "ability.pyro-utility")),
             ["soldier"] = CreateClass(
                 "soldier",
                 "Soldier",
                 new GameplayClassMovementDefinition(175, -6f, -8f, 7f, 24f, 0.9f, LegacyMovementModel.DefaultJumpStrength, 0, 15),
-                CreateLoadout("soldier.stock", "Stock", "weapon.rocketlauncher")),
+                CreateLoadout("soldier.stock", "Stock", "weapon.rocketlauncher", utilityItemId: "ability.soldier-utility")),
             ["demoman"] = CreateClass(
                 "demoman",
                 "Demoman",
                 new GameplayClassMovementDefinition(120, -7f, -10f, 8f, 24f, 1f, LegacyMovementModel.DefaultJumpStrength, 0, 10),
-                CreateLoadout("demoman.stock", "Stock", "weapon.minelauncher", secondaryItemId: "ability.demoman-detonate")),
+                CreateLoadout("demoman.stock", "Stock", "weapon.minelauncher", secondaryItemId: "ability.demoman-detonate", utilityItemId: "ability.demoman-utility")),
             ["heavy"] = CreateClass(
                 "heavy",
                 "Heavy",
                 new GameplayClassMovementDefinition(200, -9f, -12f, 10f, 24f, 0.8f, LegacyMovementModel.DefaultJumpStrength, 0, 11),
-                CreateLoadout("heavy.stock", "Stock", "weapon.minigun", secondaryItemId: "ability.heavy-sandvich")),
+                CreateLoadout("heavy.stock", "Stock", "weapon.minigun", secondaryItemId: "ability.heavy-sandvich", utilityItemId: "ability.heavy-utility")),
             ["sniper"] = CreateClass(
                 "sniper",
                 "Sniper",
                 new GameplayClassMovementDefinition(120, -6f, -8f, 7f, 24f, 0.9f, LegacyMovementModel.DefaultJumpStrength, 0, 12),
-                CreateLoadout("sniper.stock", "Stock", "weapon.rifle", secondaryItemId: "ability.sniper-scope")),
+                CreateLoadout("sniper.stock", "Stock", "weapon.rifle", secondaryItemId: "ability.sniper-scope", utilityItemId: "ability.sniper-utility")),
             ["medic"] = CreateClass(
                 "medic",
                 "Medic",
@@ -358,12 +368,12 @@ public static class StockGameplayModCatalog
                 "spy",
                 "Spy",
                 new GameplayClassMovementDefinition(100, -6f, -10f, 7f, 24f, 1.08f, LegacyMovementModel.DefaultJumpStrength, 0, 10),
-                CreateLoadout("spy.stock", "Stock", "weapon.revolver", secondaryItemId: "ability.spy-cloak")),
+                CreateLoadout("spy.stock", "Stock", "weapon.revolver", secondaryItemId: "ability.spy-cloak", utilityItemId: "ability.spy-utility")),
             ["quote"] = CreateClass(
                 "quote",
                 "Quote",
                 new GameplayClassMovementDefinition(140, -7f, -12f, 8f, 12f, 1.07f, LegacyMovementModel.DefaultJumpStrength, 0, 16),
-                CreateLoadout("quote.stock", "Stock", "weapon.blade", secondaryItemId: "ability.quote-blade-throw")),
+                CreateLoadout("quote.stock", "Stock", "weapon.blade", secondaryItemId: "ability.quote-blade-throw", utilityItemId: "ability.quote-utility")),
         };
 
         return new GameplayModPackDefinition(
