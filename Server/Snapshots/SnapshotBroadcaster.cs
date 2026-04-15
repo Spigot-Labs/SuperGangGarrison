@@ -172,7 +172,6 @@ sealed class SnapshotBroadcaster
             mapMetadata.MapContentHash)
         {
             SentryGibs = _world.SentryGibs.Select(ToSnapshotSentryGibState).ToArray(),
-            JumpPads = _world.JumpPads.Select(ToSnapshotJumpPadState).ToArray(),
         };
     }
 

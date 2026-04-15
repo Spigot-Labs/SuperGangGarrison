@@ -1,5 +1,3 @@
-using OpenGarrison.GameplayModding;
-
 namespace OpenGarrison.Core;
 
 public sealed partial class SimulationWorld
@@ -34,14 +32,11 @@ public sealed partial class SimulationWorld
         var killPressed = input.DebugKill && !previousInput.DebugKill;
         var secondaryAbilityPressed = input.FireSecondary && !previousInput.FireSecondary;
         var secondaryWeaponPressed = input.FireSecondaryWeapon && !previousInput.FireSecondaryWeapon;
-        var secondaryWeaponTriggeredPyroSelfAirblast = player.HasUtilityBehavior(BuiltInGameplayBehaviorIds.PyroUtility)
-            && secondaryWeaponPressed
-            && player.CanFirePyroAirblast();
         var interactWeaponPressed = input.InteractWeapon && !previousInput.InteractWeapon;
         var allowHeldSecondaryAbility = ShouldUseHeldSecondaryAbility(player)
             || player.HasAcquiredMedigunEquipped;
         var suppressPyroPrimaryThisTick = player.HasPyroWeaponEquipped
-            && (secondaryAbilityPressed || secondaryWeaponTriggeredPyroSelfAirblast)
+            && secondaryAbilityPressed
             && player.CanFirePyroAirblast();
 
         var healthBeforeTick = player.Health;
@@ -93,9 +88,7 @@ public sealed partial class SimulationWorld
         if (jumped)
         {
             RegisterWorldSoundEvent("JumpSnd", player.X, player.Y);
-            TryApplyJumpPadJumpBoostFromPlayerJump(player, jumped);
         }
-
         if (player.ClassId == PlayerClass.Medic)
         {
             if (input.FireSecondary)
@@ -108,7 +101,7 @@ public sealed partial class SimulationWorld
             TryHandleNetworkSecondaryAbility(player, input, preAdvanceX, preAdvanceY);
         }
 
-        if (secondaryWeaponPressed)
+        if (secondaryWeaponPressed && !input.FirePrimary)
         {
             TryHandleNetworkSecondaryWeaponFire(player, input);
         }
@@ -125,7 +118,6 @@ public sealed partial class SimulationWorld
 
         AdvancePendingRocketsForOwner(player.Id);
         player.CompleteMovement(Level, team, Config.FixedDeltaSeconds, startedGrounded, jumped, input.Down);
-        HandleJumpPadTriggerTouch(player);
         TryRegisterIntelTrailEffect(player);
         UpdateSpawnRoomState(player);
         TryActivatePendingSpyBackstab(player);

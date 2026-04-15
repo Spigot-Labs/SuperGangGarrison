@@ -31,8 +31,6 @@ sealed class ServerSettings
 
     public bool AutoBalanceEnabled { get; set; } = true;
 
-    public bool SecondaryAbilitiesEnabled { get; set; } = true;
-
     public int TimeLimitMinutes { get; set; } = 15;
 
     public int CapLimit { get; set; } = 5;
@@ -107,7 +105,6 @@ sealed class ServerSettings
             MaxTotalClients = maxTotalClients,
             MaxSpectatorClients = maxSpectatorClients,
             AutoBalanceEnabled = hostDefaults.AutoBalanceEnabled,
-            SecondaryAbilitiesEnabled = hostDefaults.SecondaryAbilitiesEnabled,
             TimeLimitMinutes = hostDefaults.TimeLimitMinutes,
             CapLimit = hostDefaults.CapLimit,
             RespawnSeconds = hostDefaults.RespawnSeconds,
@@ -125,7 +122,6 @@ sealed class ServerSettings
         hostDefaults.LobbyAnnounceEnabled = UseLobbyServer;
         hostDefaults.MapRotationFile = MapRotationFile;
         hostDefaults.AutoBalanceEnabled = AutoBalanceEnabled;
-        hostDefaults.SecondaryAbilitiesEnabled = SecondaryAbilitiesEnabled;
         hostDefaults.TimeLimitMinutes = TimeLimitMinutes;
         hostDefaults.CapLimit = CapLimit;
         hostDefaults.RespawnSeconds = RespawnSeconds;

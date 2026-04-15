@@ -137,7 +137,6 @@ public sealed class OpenGarrisonPreferencesDocument
         ini.SetInt(ServerSection, "Respawn Time", HostSettings.RespawnSeconds);
         ini.SetInt(ServerSection, "Time Limit", HostSettings.TimeLimitMinutes);
         ini.SetString(ServerSection, "Password", HostSettings.Password);
-        ini.SetBool(ServerSection, "SecondaryAbilities", HostSettings.SecondaryAbilitiesEnabled);
 
         OpenGarrisonStockMapCatalog.SaveTo(ini, HostSettings.StockMapRotation);
 
@@ -214,8 +213,6 @@ public sealed class OpenGarrisonHostSettings
 
     public bool AutoBalanceEnabled { get; set; } = true;
 
-    public bool SecondaryAbilitiesEnabled { get; set; } = true;
-
     public bool DedicatedModeEnabled { get; set; }
 
     public string MapRotationFile { get; set; } = string.Empty;
@@ -284,7 +281,6 @@ public sealed class OpenGarrisonHostSettings
             TickRate = TickRate,
             LobbyAnnounceEnabled = LobbyAnnounceEnabled,
             AutoBalanceEnabled = AutoBalanceEnabled,
-            SecondaryAbilitiesEnabled = SecondaryAbilitiesEnabled,
             DedicatedModeEnabled = DedicatedModeEnabled,
             MapRotationFile = MapRotationFile,
             StockMapRotation = StockMapRotation.Select(entry => entry.Clone()).ToList(),
@@ -306,7 +302,6 @@ public sealed class OpenGarrisonHostSettings
                 ini.GetInt("Server.Advanced", "TickRate", SimulationConfig.DefaultTicksPerSecond)),
             LobbyAnnounceEnabled = ini.GetBool("Settings", "UseLobby", true),
             AutoBalanceEnabled = ini.GetBool("Server", "AutoBalance", true),
-            SecondaryAbilitiesEnabled = ini.GetBool("Server", "SecondaryAbilities", true),
             DedicatedModeEnabled = ini.GetBool("Server", "Dedicated", false),
             MapRotationFile = ini.GetString("Server", "MapRotation", string.Empty),
             StockMapRotation = OpenGarrisonStockMapCatalog.LoadFrom(ini, legacySelectedMap),

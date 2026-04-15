@@ -295,11 +295,6 @@ internal sealed class ServerRuntimeEventReporter(
 
     private void PublishDamageEvents(SnapshotTransientEvents transientEvents)
     {
-        if (transientEvents.DamageEvents is null || transientEvents.DamageEvents.Length == 0)
-        {
-            return;
-        }
-
         var pluginHost = pluginHostGetter();
         for (var index = 0; index < transientEvents.DamageEvents.Length; index += 1)
         {

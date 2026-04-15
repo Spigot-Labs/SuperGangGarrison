@@ -20,7 +20,6 @@ public partial class Game1
         int RespawnSeconds,
         bool LobbyAnnounce,
         bool AutoBalance,
-        bool SecondaryAbilitiesEnabled,
         string? RequestedMap,
         string? MapRotationFile);
 
@@ -41,7 +40,6 @@ public partial class Game1
         public string RespawnSecondsBuffer { get; set; } = "5";
         public bool LobbyAnnounceEnabled { get; set; } = true;
         public bool AutoBalanceEnabled { get; set; } = true;
-        public bool SecondaryAbilitiesEnabled { get; set; } = true;
         public List<OpenGarrisonMapRotationEntry> MapEntries { get; set; } = new();
 
         public void LoadFrom(OpenGarrisonHostSettings hostDefaults)
@@ -60,7 +58,6 @@ public partial class Game1
             RespawnSecondsBuffer = Math.Clamp(hostDefaults.RespawnSeconds, 0, 255).ToString(CultureInfo.InvariantCulture);
             LobbyAnnounceEnabled = hostDefaults.LobbyAnnounceEnabled;
             AutoBalanceEnabled = hostDefaults.AutoBalanceEnabled;
-            SecondaryAbilitiesEnabled = hostDefaults.SecondaryAbilitiesEnabled;
             MapEntries = BuildMapEntries(hostDefaults);
             if (MapEntries.Count == 0)
             {
@@ -142,7 +139,6 @@ public partial class Game1
             settings.HostDefaults.RespawnSeconds = ParseClampedInt(RespawnSecondsBuffer, 5, 0, 255);
             settings.HostDefaults.LobbyAnnounceEnabled = LobbyAnnounceEnabled;
             settings.HostDefaults.AutoBalanceEnabled = AutoBalanceEnabled;
-            settings.HostDefaults.SecondaryAbilitiesEnabled = SecondaryAbilitiesEnabled;
             if (MapEntries.Count > 0)
             {
                 settings.HostDefaults.StockMapRotation = MapEntries
@@ -238,7 +234,6 @@ public partial class Game1
                 respawnSeconds,
                 LobbyAnnounceEnabled,
                 AutoBalanceEnabled,
-                SecondaryAbilitiesEnabled,
                 requestedMap,
                 string.IsNullOrWhiteSpace(trimmedRotationFile) ? null : trimmedRotationFile);
             return true;

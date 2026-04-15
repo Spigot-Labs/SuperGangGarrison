@@ -180,8 +180,7 @@ public sealed partial class SimulationWorld
             float aimWorldX,
             float aimWorldY,
             PlayerClass weaponClassId,
-            string? killFeedWeaponSpriteNameOverride = null,
-            float pelletSpawnDistance = 15f)
+            string? killFeedWeaponSpriteNameOverride = null)
         {
             var weaponOrigin = GetSourceWeaponOrigin(attacker, weaponClassId);
             var aimDeltaX = aimWorldX - weaponOrigin.BaseX;
@@ -205,8 +204,8 @@ public sealed partial class SimulationWorld
                     directionY * pelletSpeed);
                 SpawnShot(
                     attacker,
-                    weaponOrigin.BaseX + directionX * pelletSpawnDistance,
-                    weaponOrigin.BaseY + directionY * pelletSpawnDistance,
+                    weaponOrigin.BaseX + directionX * 15f,
+                    weaponOrigin.BaseY + directionY * 15f,
                     launchedVelocityX + (attacker.HorizontalSpeed * (float)Config.FixedDeltaSeconds),
                     launchedVelocityY,
                     killFeedWeaponSpriteNameOverride);

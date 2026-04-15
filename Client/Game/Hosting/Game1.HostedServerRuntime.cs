@@ -17,7 +17,6 @@ public partial class Game1
         int respawnSeconds,
         bool lobbyAnnounce,
         bool autoBalance,
-        bool secondaryAbilitiesEnabled,
         string? requestedMap,
         string? mapRotationFile)
     {
@@ -32,7 +31,6 @@ public partial class Game1
             respawnSeconds,
             lobbyAnnounce,
             autoBalance,
-            secondaryAbilitiesEnabled,
             requestedMap,
             mapRotationFile);
     }
@@ -47,7 +45,6 @@ public partial class Game1
         int respawnSeconds,
         bool lobbyAnnounce,
         bool autoBalance,
-        bool secondaryAbilitiesEnabled,
         string? requestedMap,
         string? mapRotationFile,
         out string error)
@@ -62,7 +59,6 @@ public partial class Game1
             respawnSeconds,
             lobbyAnnounce,
             autoBalance,
-            secondaryAbilitiesEnabled,
             requestedMap,
             mapRotationFile,
             resetConsole: false,
@@ -79,7 +75,6 @@ public partial class Game1
         int respawnSeconds,
         bool lobbyAnnounce,
         bool autoBalance,
-        bool secondaryAbilitiesEnabled,
         string? requestedMap,
         string? mapRotationFile,
         out string error)
@@ -94,7 +89,6 @@ public partial class Game1
             respawnSeconds,
             lobbyAnnounce,
             autoBalance,
-            secondaryAbilitiesEnabled,
             requestedMap,
             mapRotationFile);
         return _hostedServerRuntime.TryStartInTerminal(launchOptions, out error);
@@ -131,8 +125,7 @@ public partial class Game1
         int capLimit,
         int respawnSeconds,
         bool lobbyAnnounce,
-        bool autoBalance,
-        bool secondaryAbilitiesEnabled)
+        bool autoBalance)
     {
         _hostedServerConsole.Prime(
             serverName,
@@ -143,7 +136,6 @@ public partial class Game1
             respawnSeconds,
             lobbyAnnounce,
             autoBalance,
-            secondaryAbilitiesEnabled,
             GetSelectedHostMapEntry()?.DisplayName);
     }
 

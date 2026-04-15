@@ -243,12 +243,6 @@ public partial class Game1
             return;
         }
 
-        if (layout.SecondaryAbilitiesBounds.Contains(mouse.Position))
-        {
-            _hostSecondaryAbilitiesEnabled = !_hostSecondaryAbilitiesEnabled;
-            return;
-        }
-
         if (!IsHostedServerRunning && layout.HostBounds.Contains(mouse.Position))
         {
             TryHostFromSetup();

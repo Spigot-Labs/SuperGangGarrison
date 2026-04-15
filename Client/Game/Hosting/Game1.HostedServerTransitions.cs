@@ -37,7 +37,6 @@ public partial class Game1
         int respawnSeconds,
         bool lobbyAnnounce,
         bool autoBalance,
-        bool secondaryAbilitiesEnabled,
         bool resetConsole,
         string? launcherLogMessage = null)
     {
@@ -50,8 +49,7 @@ public partial class Game1
             capLimit,
             respawnSeconds,
             lobbyAnnounce,
-            autoBalance,
-            secondaryAbilitiesEnabled);
+            autoBalance);
 
         if (!string.IsNullOrWhiteSpace(launcherLogMessage))
         {
@@ -69,7 +67,6 @@ public partial class Game1
         int respawnSeconds,
         bool lobbyAnnounce,
         bool autoBalance,
-        bool secondaryAbilitiesEnabled,
         string? requestedMap,
         string? mapRotationFile,
         bool resetConsole,
@@ -85,7 +82,6 @@ public partial class Game1
             respawnSeconds,
             lobbyAnnounce,
             autoBalance,
-            secondaryAbilitiesEnabled,
             requestedMap,
             mapRotationFile);
         InitializeHostedServerConsole(reset: resetConsole);
