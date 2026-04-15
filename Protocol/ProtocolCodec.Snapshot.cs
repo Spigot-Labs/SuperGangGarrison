@@ -57,6 +57,8 @@ public static partial class ProtocolCodec
         WriteEntityIdList(writer, snapshot.RemovedDeadBodyIds);
         WriteSentryGibStates(writer, snapshot.SentryGibs);
         WriteEntityIdList(writer, snapshot.RemovedSentryGibIds);
+        WriteJumpPadStates(writer, snapshot.JumpPads);
+        WriteEntityIdList(writer, snapshot.RemovedJumpPadIds);
         writer.Write(snapshot.ControlPointSetupTicksRemaining);
         writer.Write(snapshot.KothUnlockTicksRemaining);
         writer.Write(snapshot.KothRedTimerTicksRemaining);
@@ -122,6 +124,8 @@ public static partial class ProtocolCodec
         var removedDeadBodyIds = ReadEntityIdList(reader);
         var sentryGibs = ReadSentryGibStates(reader);
         var removedSentryGibIds = ReadEntityIdList(reader);
+        var jumpPads = ReadJumpPadStates(reader);
+        var removedJumpPadIds = ReadEntityIdList(reader);
         var controlPointSetupTicksRemaining = reader.ReadInt32();
         var kothUnlockTicksRemaining = reader.ReadInt32();
         var kothRedTimerTicksRemaining = reader.ReadInt32();
@@ -197,6 +201,8 @@ public static partial class ProtocolCodec
             RemovedDeadBodyIds = removedDeadBodyIds,
             SentryGibs = sentryGibs,
             RemovedSentryGibIds = removedSentryGibIds,
+            JumpPads = jumpPads,
+            RemovedJumpPadIds = removedJumpPadIds,
         };
     }
 
