@@ -42,8 +42,7 @@ public sealed partial class GameplayRuntimeRegistry
         RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.PelletGun, PrimaryWeaponKind.PelletGun, FireSoundName: "ShotgunSnd"));
         RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.Flamethrower, PrimaryWeaponKind.FlameThrower));
         RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.RocketLauncher, PrimaryWeaponKind.RocketLauncher, FireSoundName: "RocketSnd"));
-        RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.MineLauncher, PrimaryWeaponKind.MineLauncher, FireSoundName: "MinegunSnd"));
-        RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.Minigun, PrimaryWeaponKind.Minigun, FireSoundName: "ChaingunSnd"));
+        RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.MineLauncher, PrimaryWeaponKind.MineLauncher, FireSoundName: "MinegunSnd"));        RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.GrenadeLauncher, PrimaryWeaponKind.GrenadeLauncher, FireSoundName: "MinegunSnd"));        RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.Minigun, PrimaryWeaponKind.Minigun, FireSoundName: "ChaingunSnd"));
         RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.Rifle, PrimaryWeaponKind.Rifle, FireSoundName: "SniperSnd"));
         RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.Medigun, PrimaryWeaponKind.Medigun));
         RegisterPrimaryWeaponBehavior(new GameplayPrimaryWeaponRuntimeBinding(BuiltInGameplayBehaviorIds.MedigunCrit, PrimaryWeaponKind.Medigun));
@@ -63,6 +62,7 @@ public sealed partial class GameplayRuntimeRegistry
         RegisterSecondaryAbilityBehavior(new GameplaySecondaryAbilityRuntimeBinding(BuiltInGameplayBehaviorIds.Medigun, GameplaySecondaryAbilityActionKind.MedicNeedlegun));
         RegisterSecondaryAbilityBehavior(new GameplaySecondaryAbilityRuntimeBinding(BuiltInGameplayBehaviorIds.MedigunCrit, GameplaySecondaryAbilityActionKind.MedicNeedlegun));
         RegisterUtilityAbilityBehavior(new GameplayUtilityAbilityRuntimeBinding(BuiltInGameplayBehaviorIds.MedicUber, GameplayUtilityAbilityActionKind.MedicUber));
+        RegisterUtilityAbilityBehavior(new GameplayUtilityAbilityRuntimeBinding(BuiltInGameplayBehaviorIds.GrenadeLauncher, GameplayUtilityAbilityActionKind.GrenadeLauncher));
     }
 
     private static GameplayClassRuntimeBinding[] CreateStockClassBindings(string modPackId)

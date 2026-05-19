@@ -3,6 +3,7 @@
 using System.Globalization;
 using Microsoft.Xna.Framework;
 using OpenGarrison.Core;
+using OpenGarrison.GameplayModding;
 
 namespace OpenGarrison.Client;
 
@@ -15,6 +16,8 @@ public partial class Game1
         private const string SoldierShotgunAmmoKey = "soldier_shotgun_ammo";
         private const string SoldierShotgunMaxAmmoKey = "soldier_shotgun_max_ammo";
         private const string SoldierShotgunReloadTicksKey = "soldier_shotgun_reload_ticks";
+        private const string DemomanGrenadeLauncherAmmoKey = "demoman_gl_ammo";
+        private const string DemomanGrenadeLauncherReloadTicksKey = "demoman_gl_reload_ticks";
 
         private static readonly Color AmmoHudBarColor = new(217, 217, 183);
         private static readonly Color AmmoHudTextColor = new(245, 235, 210);
@@ -424,13 +427,144 @@ public partial class Game1
             var stickyCount = CountLocalOwnedStickyMines();
             var maxStickies = Math.Max(1, _game._world.LocalPlayer.PrimaryWeapon.MaxAmmo);
             var frameIndex = _game._world.LocalPlayer.Team == PlayerTeam.Blue ? 1 : 0;
-            if (!_game.TryDrawScreenSprite("StickyCounterS", frameIndex, GetSourceHudPoint(735f, 522f), Color.White, new Vector2(3f, 3f)))
+
+            // Check if the utility slot holds a grenade launcher (works in both offline and online)
+            var utilityItemId = _game._world.LocalPlayer.GameplayLoadoutState.UtilityItemId;
+            var hasGrenadeLauncher = !string.IsNullOrWhiteSpace(utilityItemId)
+                && CharacterClassCatalog.RuntimeRegistry.TryGetPrimaryWeaponBinding(
+                    CharacterClassCatalog.RuntimeRegistry.GetRequiredItem(utilityItemId).BehaviorId, out _);
+
+            const float panelScale = 2.4f;
+            const float stickyScale = 3f;
+            const float panelGapPixels = 4f;
+
+            // Measure actual sprite heights so each panel stacks with exact 4px gaps
+            var mineHudSpriteName = GetAmmoHudSpriteName();
+            float minePanelHeight = 38f;
+            if (mineHudSpriteName is not null)
+            {
+                var mineSprite = _game._runtimeAssets.GetSprite(mineHudSpriteName);
+                if (mineSprite?.Frames.Count > 0)
+                    minePanelHeight = mineSprite.Frames[0].Height * panelScale;
+            }
+
+            float glPanelHeight = 38f;
+            if (hasGrenadeLauncher)
+            {
+                var glSprite = _game._runtimeAssets.GetSprite("GrenadeLauncherAmmoS");
+                if (glSprite?.Frames.Count > 0)
+                    glPanelHeight = glSprite.Frames[0].Height * panelScale;
+            }
+
+            float stickyCounterHeight = 38f;
+            {
+                var stickySprite = _game._runtimeAssets.GetSprite("StickyCounterS");
+                if (stickySprite?.Frames.Count > 0)
+                    stickyCounterHeight = stickySprite.Frames[0].Height * stickyScale;
+            }
+
+            // Layout from bottom to top: grenade launcher → mine launcher → sticky counter (4px gaps)
+            const float grenadeLauncherHudY = SourceAmmoHudBaseY + 86f;
+            var mineLauncherHudY = hasGrenadeLauncher
+                ? grenadeLauncherHudY - glPanelHeight - panelGapPixels
+                : grenadeLauncherHudY;
+            var stickyCounterY = mineLauncherHudY - minePanelHeight - panelGapPixels;
+
+            // Draw mine launcher HUD
+            if (mineHudSpriteName is not null && _game.TryDrawScreenSprite(mineHudSpriteName, GetAmmoHudFrameIndex(), GetSourceHudPoint(728f, mineLauncherHudY), Color.White, new Vector2(panelScale, panelScale)))
+            {
+                var currentMines = GetLocalDisplayedMainWeaponCurrentShells();
+                var ammoCountScale = GetAmmoCountBuildScaleForValue(currentMines);
+                var reloadBarBottomSourceY = mineLauncherHudY + 12f;
+                var ammoTextSourceY = reloadBarBottomSourceY - _game.MeasureMenuBitmapFontHeight(ammoCountScale);
+                _game.DrawMenuBitmapFontText(currentMines.ToString(CultureInfo.InvariantCulture), GetSourceHudPoint(755f, ammoTextSourceY), AmmoHudTextColor, ammoCountScale);
+                DrawAmmoReloadBar(GetSourceHudRectangle(689f, mineLauncherHudY + 4f, 34f, 8f));
+            }
+
+            // Draw sticky counter
+            if (!_game.TryDrawScreenSprite("StickyCounterS", frameIndex, GetSourceHudPoint(735f, stickyCounterY), Color.White, new Vector2(stickyScale, stickyScale)))
             {
                 return;
             }
 
-            _game.DrawHudTextLeftAligned(stickyCount.ToString(CultureInfo.InvariantCulture), GetSourceHudPoint(717f, 524f), AmmoHudBarColor, 1.5f);
-            _game.DrawHudTextLeftAligned($"/{maxStickies.ToString(CultureInfo.InvariantCulture)}", GetSourceHudPoint(730f, 524f), AmmoHudBarColor, 1.5f);
+            _game.DrawHudTextLeftAligned(stickyCount.ToString(CultureInfo.InvariantCulture), GetSourceHudPoint(717f, stickyCounterY + 2f), AmmoHudBarColor, 1.5f);
+            _game.DrawHudTextLeftAligned($"/{maxStickies.ToString(CultureInfo.InvariantCulture)}", GetSourceHudPoint(730f, stickyCounterY + 2f), AmmoHudBarColor, 1.5f);
+
+            // Draw grenade launcher HUD if present
+            if (hasGrenadeLauncher)
+            {
+                DrawGrenadeLauncherHud();
+            }
+        }
+
+        private void DrawGrenadeLauncherHud()
+        {
+            var utilityItemId = _game._world.LocalPlayer.GameplayLoadoutState.UtilityItemId;
+            if (string.IsNullOrWhiteSpace(utilityItemId))
+            {
+                return;
+            }
+
+            var presentation = CharacterClassCatalog.RuntimeRegistry.GetRequiredItem(utilityItemId).Presentation;
+            var hudFrameIndex = _game._world.LocalPlayer.Team == PlayerTeam.Blue ? presentation.BlueTeamHudFrameOffset : 0;
+            
+            // Draw grenade launcher HUD sprite at primary weapon position (matches rocket launcher)
+            const float grenadeLauncherHudY = SourceAmmoHudBaseY + 86f;
+            if (!_game.TryDrawScreenSprite("GrenadeLauncherAmmoS", hudFrameIndex, GetSourceHudPoint(728f, grenadeLauncherHudY), Color.White, new Vector2(2.4f, 2.4f)))
+            {
+                return;
+            }
+
+            // Get ammo from replicated state (online) or local offhand state (offline)
+            var currentAmmo = _game._world.LocalPlayer.TryGetReplicatedStateInt(CoreReplicatedOwnerId, DemomanGrenadeLauncherAmmoKey, out var replicatedAmmo)
+                ? replicatedAmmo
+                : _game._world.LocalPlayer.ExperimentalOffhandCurrentShells;
+            var reloadTicksRemaining = _game._world.LocalPlayer.TryGetReplicatedStateInt(CoreReplicatedOwnerId, DemomanGrenadeLauncherReloadTicksKey, out var replicatedReloadTicks)
+                ? Math.Max(0, replicatedReloadTicks)
+                : _game._world.LocalPlayer.ExperimentalOffhandReloadTicksUntilNextShell;
+            var weaponDefinition = _game._world.LocalPlayer.ExperimentalOffhandWeapon;
+            var utilityItem = CharacterClassCatalog.RuntimeRegistry.GetRequiredItem(utilityItemId);
+            var maxAmmo = weaponDefinition?.MaxAmmo ?? utilityItem.Ammo.MaxAmmo;
+            var totalReloadTicks = Math.Max(1, weaponDefinition?.AmmoReloadTicks ?? (int)utilityItem.Ammo.ReloadSourceTicks);
+            
+            // Draw ammo count to the right of the sprite
+            var ammoCountScale = GetAmmoCountBuildScaleForValue(currentAmmo);
+            var reloadBarBottomSourceY = grenadeLauncherHudY + 12f;
+            var ammoTextSourceY = reloadBarBottomSourceY - _game.MeasureMenuBitmapFontHeight(ammoCountScale);
+            _game.DrawMenuBitmapFontText(currentAmmo.ToString(CultureInfo.InvariantCulture), GetSourceHudPoint(755f, ammoTextSourceY), AmmoHudTextColor, ammoCountScale);
+            
+            // Draw reload bar
+            var reloadProgress = currentAmmo >= maxAmmo || reloadTicksRemaining <= 0
+                ? 1f
+                : Math.Clamp(1f - (reloadTicksRemaining / (float)totalReloadTicks), 0f, 1f);
+            if (reloadProgress < 1f)
+            {
+                DrawSourceAmmoHudBar(689f, 34f, reloadProgress * maxAmmo, maxAmmo, AmmoHudBarColor);
+            }
+        }
+
+        private float GetGrenadeLauncherReloadProgress()
+        {
+            var reloadTicks = _game._world.LocalPlayer.ExperimentalOffhandReloadTicksUntilNextShell;
+            if (reloadTicks <= 0)
+            {
+                return 0f;
+            }
+
+            var weaponDefinition = _game._world.LocalPlayer.ExperimentalOffhandWeapon;
+            if (weaponDefinition is null)
+            {
+                return 0f;
+            }
+
+            var totalReloadTicks = weaponDefinition.AmmoReloadTicks;
+            
+            if (totalReloadTicks <= 0)
+            {
+                return 0f;
+            }
+
+            return 1f - ((float)reloadTicks / totalReloadTicks);
         }
 
         private void DrawExperimentalOffhandHudCore()

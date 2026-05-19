@@ -550,6 +550,11 @@ public partial class Game1
             return player.ExperimentalOffhandCurrentShells;
         }
 
+        if (ShouldPresentExperimentalDemomanGrenadeLauncher(player))
+        {
+            return player.ExperimentalOffhandCurrentShells;
+        }
+
         return _networkClient.IsConnected
             && ReferenceEquals(player, _world.LocalPlayer)
             && _hasPredictedLocalActionState
@@ -571,6 +576,11 @@ public partial class Game1
                 return Math.Max(0, replicatedCooldownTicks);
             }
 
+            return player.ExperimentalOffhandCooldownTicks;
+        }
+
+        if (ShouldPresentExperimentalDemomanGrenadeLauncher(player))
+        {
             return player.ExperimentalOffhandCooldownTicks;
         }
 
@@ -610,6 +620,11 @@ public partial class Game1
             return player.ExperimentalOffhandReloadTicksUntilNextShell;
         }
 
+        if (ShouldPresentExperimentalDemomanGrenadeLauncher(player))
+        {
+            return player.ExperimentalOffhandReloadTicksUntilNextShell;
+        }
+
         if (_networkClient.IsConnected
             && ReferenceEquals(player, _world.LocalPlayer)
             && _hasPredictedLocalActionState)
@@ -636,11 +651,19 @@ public partial class Game1
             return player.AcquiredWeaponMaxShells;
         }
 
-        return ShouldPresentExperimentalSoldierShotgun(player)
-            ? player.TryGetReplicatedStateInt(CoreReplicatedOwnerId, SoldierShotgunMaxAmmoKey, out var replicatedMaxAmmo)
+        if (ShouldPresentExperimentalSoldierShotgun(player))
+        {
+            return player.TryGetReplicatedStateInt(CoreReplicatedOwnerId, SoldierShotgunMaxAmmoKey, out var replicatedMaxAmmo)
                 ? Math.Max(1, replicatedMaxAmmo)
-                : player.ExperimentalOffhandMaxShells
-            : player.MaxShells;
+                : player.ExperimentalOffhandMaxShells;
+        }
+
+        if (ShouldPresentExperimentalDemomanGrenadeLauncher(player))
+        {
+            return player.ExperimentalOffhandMaxShells;
+        }
+
+        return player.MaxShells;
     }
 
     private static PrimaryWeaponDefinition GetRenderWeaponStats(PlayerEntity player)
@@ -660,9 +683,17 @@ public partial class Game1
             return player.AcquiredWeapon ?? player.PrimaryWeapon;
         }
 
-        return ShouldPresentExperimentalSoldierShotgun(player)
-            ? player.ExperimentalOffhandWeapon ?? CharacterClassCatalog.SoldierShotgun
-            : player.PrimaryWeapon;
+        if (ShouldPresentExperimentalSoldierShotgun(player))
+        {
+            return player.ExperimentalOffhandWeapon ?? CharacterClassCatalog.SoldierShotgun;
+        }
+
+        if (ShouldPresentExperimentalDemomanGrenadeLauncher(player))
+        {
+            return player.ExperimentalOffhandWeapon ?? player.PrimaryWeapon;
+        }
+
+        return player.PrimaryWeapon;
     }
 
     private static PlayerClass GetRenderWeaponPresentationClassId(PlayerEntity player)
@@ -716,7 +747,19 @@ public partial class Game1
             return "offhand:soldier";
         }
 
+        if (ShouldPresentExperimentalDemomanGrenadeLauncher(player))
+        {
+            return "offhand:demoman";
+        }
+
         return null;
+    }
+
+    private static bool ShouldPresentExperimentalDemomanGrenadeLauncher(PlayerEntity player)
+    {
+        if (player.ClassId != PlayerClass.Demoman) return false;
+        if (player.IsExperimentalOffhandPresented) return true;
+        return player.GameplayLoadoutState.EquippedSlot == GameplayEquipmentSlot.Utility;
     }
 
     private static bool ShouldPresentExperimentalSoldierShotgun(PlayerEntity player)

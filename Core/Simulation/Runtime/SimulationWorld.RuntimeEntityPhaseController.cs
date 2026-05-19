@@ -25,8 +25,7 @@ public sealed partial class SimulationWorld
             _world.AdvanceFlames();
             _world.AdvanceFlares();
             _world.AdvanceRockets();
-            _world.AdvanceMines();
-            _world.AdvancePlayerGibs();
+            _world.AdvanceMines();            _world.AdvanceGrenades();            _world.AdvancePlayerGibs();
             _world.AdvanceBloodDrops();
             _world.AdvanceDeadBodies();
             _world.AdvanceSentryGibs();

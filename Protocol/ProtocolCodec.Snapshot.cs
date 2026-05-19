@@ -64,6 +64,8 @@ public static partial class ProtocolCodec
         WriteEntityIdList(writer, snapshot.RemovedFlareIds);
         WriteMineStates(writer, snapshot.Mines);
         WriteEntityIdList(writer, snapshot.RemovedMineIds);
+        WriteGrenadeStates(writer, snapshot.Grenades);
+        WriteEntityIdList(writer, snapshot.RemovedGrenadeIds);
         WriteGibSpawnEvents(writer, snapshot.GibSpawnEvents);
         WriteDeadBodyStates(writer, snapshot.DeadBodies);
         WriteEntityIdList(writer, snapshot.RemovedDeadBodyIds);
@@ -144,6 +146,8 @@ public static partial class ProtocolCodec
         var removedFlareIds = ReadEntityIdList(reader);
         var mines = ReadMineStates(reader);
         var removedMineIds = ReadEntityIdList(reader);
+        var grenades = ReadGrenadeStates(reader);
+        var removedGrenadeIds = ReadEntityIdList(reader);
         var gibSpawnEvents = ReadGibSpawnEvents(reader);
         var deadBodies = ReadDeadBodyStates(reader);
         var removedDeadBodyIds = ReadEntityIdList(reader);
@@ -243,6 +247,8 @@ public static partial class ProtocolCodec
             RemovedFlareIds = removedFlareIds,
             RemovedMineIds = removedMineIds,
             GibSpawnEvents = gibSpawnEvents,
+            Grenades = grenades,
+            RemovedGrenadeIds = removedGrenadeIds,
             RemovedDeadBodyIds = removedDeadBodyIds,
             SentryGibs = sentryGibs,
             RemovedSentryGibIds = removedSentryGibIds,

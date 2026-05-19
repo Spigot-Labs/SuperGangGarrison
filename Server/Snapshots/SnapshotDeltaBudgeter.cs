@@ -529,6 +529,7 @@ internal static class SnapshotDeltaBudgeter
             Flames = seedFromTemplateCollections ? new List<SnapshotFlameState>(template.Flames) : [];
             Flares = seedFromTemplateCollections ? new List<SnapshotShotState>(template.Flares) : [];
             Mines = seedFromTemplateCollections ? new List<SnapshotMineState>(template.Mines) : [];
+            Grenades = seedFromTemplateCollections ? new List<SnapshotGrenadeState>(template.Grenades) : [];
             SentryGibs = seedFromTemplateCollections ? new List<SnapshotSentryGibState>(template.SentryGibs) : [];
             JumpPads = seedFromTemplateCollections ? new List<SnapshotJumpPadState>(template.JumpPads) : [];
             PlayerGibs = seedFromTemplateCollections ? new List<SnapshotPlayerGibState>(template.PlayerGibs) : [];
@@ -544,6 +545,7 @@ internal static class SnapshotDeltaBudgeter
             RemovedFlameIds = new List<int>(template.RemovedFlameIds);
             RemovedFlareIds = new List<int>(template.RemovedFlareIds);
             RemovedMineIds = new List<int>(template.RemovedMineIds);
+            RemovedGrenadeIds = new List<int>(template.RemovedGrenadeIds);
             RemovedSentryGibIds = new List<int>(template.RemovedSentryGibIds);
             RemovedJumpPadIds = new List<int>(template.RemovedJumpPadIds);
             RemovedPlayerGibIds = new List<int>(template.RemovedPlayerGibIds);
@@ -576,6 +578,7 @@ internal static class SnapshotDeltaBudgeter
             Flames = new List<SnapshotFlameState>(other.Flames);
             Flares = new List<SnapshotShotState>(other.Flares);
             Mines = new List<SnapshotMineState>(other.Mines);
+            Grenades = new List<SnapshotGrenadeState>(other.Grenades);
             SentryGibs = new List<SnapshotSentryGibState>(other.SentryGibs);
             PlayerGibs = new List<SnapshotPlayerGibState>(other.PlayerGibs);
             DeadBodies = new List<SnapshotDeadBodyState>(other.DeadBodies);
@@ -590,6 +593,7 @@ internal static class SnapshotDeltaBudgeter
             RemovedFlameIds = new List<int>(other.RemovedFlameIds);
             RemovedFlareIds = new List<int>(other.RemovedFlareIds);
             RemovedMineIds = new List<int>(other.RemovedMineIds);
+            RemovedGrenadeIds = new List<int>(other.RemovedGrenadeIds);
             RemovedSentryGibIds = new List<int>(other.RemovedSentryGibIds);
             JumpPads = new List<SnapshotJumpPadState>(other.JumpPads);
             RemovedJumpPadIds = new List<int>(other.RemovedJumpPadIds);
@@ -620,6 +624,7 @@ internal static class SnapshotDeltaBudgeter
         public List<SnapshotFlameState> Flames { get; } = new();
         public List<SnapshotShotState> Flares { get; } = new();
         public List<SnapshotMineState> Mines { get; } = new();
+        public List<SnapshotGrenadeState> Grenades { get; } = new();
         public List<SnapshotSentryGibState> SentryGibs { get; } = new();
         public List<SnapshotJumpPadState> JumpPads { get; } = new();
         public List<SnapshotPlayerGibState> PlayerGibs { get; } = new();
@@ -635,6 +640,7 @@ internal static class SnapshotDeltaBudgeter
         public List<int> RemovedFlameIds { get; } = new();
         public List<int> RemovedFlareIds { get; } = new();
         public List<int> RemovedMineIds { get; } = new();
+        public List<int> RemovedGrenadeIds { get; } = new();
         public List<int> RemovedSentryGibIds { get; } = new();
         public List<int> RemovedJumpPadIds { get; } = new();
         public List<int> RemovedPlayerGibIds { get; } = new();
@@ -688,6 +694,7 @@ internal static class SnapshotDeltaBudgeter
                 RemovedFlameIds = RemovedFlameIds.ToArray(),
                 RemovedFlareIds = RemovedFlareIds.ToArray(),
                 RemovedMineIds = RemovedMineIds.ToArray(),
+                RemovedGrenadeIds = RemovedGrenadeIds.ToArray(),
                 RemovedSentryGibIds = RemovedSentryGibIds.ToArray(),
                 RemovedJumpPadIds = RemovedJumpPadIds.ToArray(),
                 RemovedPlayerGibIds = RemovedPlayerGibIds.ToArray(),

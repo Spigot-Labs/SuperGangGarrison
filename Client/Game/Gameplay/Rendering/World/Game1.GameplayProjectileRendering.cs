@@ -600,6 +600,11 @@ public partial class Game1
         {
             DrawMineProjectile(mine, cameraPosition);
         }
+
+        foreach (var grenade in _world.Grenades)
+        {
+            DrawGrenadeProjectile(grenade, cameraPosition);
+        }
     }
 
     private void DrawShotProjectile(ShotProjectileEntity shot, Vector2 cameraPosition, Color blueColor, Color redColor)
@@ -1573,6 +1578,50 @@ public partial class Game1
         {
             // Draw screen blend overlay on top
             DrawCriticalProjectileOverlay("MineS", frameIndex, renderPosition.X, renderPosition.Y, cameraPosition, mine.Team);
+        }
+    }
+
+    private void DrawGrenadeProjectile(GrenadeProjectileEntity grenade, Vector2 cameraPosition)
+    {
+        var renderPosition = GetRenderPosition(grenade.Id, grenade.X, grenade.Y);
+        var spriteName = grenade.Team == PlayerTeam.Blue ? "BlueGrenadeS" : "RedGrenadeS";
+        var frameIndex = 0;
+        var rotation = grenade.RotationAngle;
+
+        // Draw outline first (behind sprite) if critical
+        if (grenade.IsCritical)
+        {
+            DrawCriticalProjectileOutline(spriteName, frameIndex, renderPosition.X, renderPosition.Y, cameraPosition, grenade.Team, rotation);
+        }
+
+        // Draw main sprite
+        if (!TryDrawSprite(spriteName, frameIndex, renderPosition.X, renderPosition.Y, cameraPosition, Color.White, rotation))
+        {
+            var grenadeRectangle = new Rectangle(
+                (int)(renderPosition.X - 3f - cameraPosition.X),
+                (int)(renderPosition.Y - 3f - cameraPosition.Y),
+                6,
+                6);
+            var grenadeColor = grenade.Team == PlayerTeam.Blue ? Color.Blue : Color.Red;
+            _spriteBatch.Draw(_pixel, grenadeRectangle, grenadeColor);
+            if (grenade.IsCritical)
+            {
+                var overlayColor = GetCriticalProjectileOverlayColor(grenade.Team) * 0.3f;
+                _spriteBatch.End();
+                _spriteBatch.Begin(
+                    SpriteSortMode.Deferred,
+                    BlendState.Additive,
+                    samplerState: SamplerState.PointClamp,
+                    rasterizerState: RasterizerState.CullNone);
+                _spriteBatch.Draw(_pixel, grenadeRectangle, overlayColor);
+                _spriteBatch.End();
+                _spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: RasterizerState.CullNone);
+            }
+        }
+        else if (grenade.IsCritical)
+        {
+            // Draw screen blend overlay on top
+            DrawCriticalProjectileOverlay(spriteName, frameIndex, renderPosition.X, renderPosition.Y, cameraPosition, grenade.Team, rotation);
         }
     }
 }

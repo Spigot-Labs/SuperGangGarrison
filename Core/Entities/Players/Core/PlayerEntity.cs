@@ -845,9 +845,22 @@ public sealed partial class PlayerEntity : SimulationEntity
         var runtimeRegistry = CharacterClassCatalog.RuntimeRegistry;
         var secondaryItemId = ResolveRegisteredWeaponItemId(ExperimentalOffhandWeapon);
         var acquiredItemId = ResolveRegisteredWeaponItemId(AcquiredWeapon);
-        var equippedSlot = (IsExperimentalOffhandEquipped || IsAcquiredWeaponEquipped)
-            ? GameplayEquipmentSlot.Secondary
-            : SelectedGameplayEquippedSlot;
+
+        GameplayEquipmentSlot equippedSlot;
+        if (IsAcquiredWeaponEquipped)
+        {
+            equippedSlot = GameplayEquipmentSlot.Secondary;
+        }
+        else if (IsExperimentalOffhandEquipped)
+        {
+            // If the offhand weapon resolves as a Primary-slot item (e.g. Soldier shotgun), use Secondary.
+            // Otherwise use Utility so the equippedItemId resolves to the utility item (e.g. Demoman grenade launcher).
+            equippedSlot = secondaryItemId != null ? GameplayEquipmentSlot.Secondary : GameplayEquipmentSlot.Utility;
+        }
+        else
+        {
+            equippedSlot = SelectedGameplayEquippedSlot;
+        }
 
         return runtimeRegistry.CreatePlayerLoadoutState(
             ClassId,

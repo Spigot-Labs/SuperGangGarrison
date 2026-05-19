@@ -424,7 +424,7 @@ public sealed partial class SimulationWorld
         }
     }
 
-    private static bool TryHandleSoldierOffhandToggle(PlayerEntity player)
+    private bool TryHandleSoldierOffhandToggle(PlayerEntity player)
     {
         if (player.ClassId != PlayerClass.Soldier || !player.HasExperimentalOffhandWeapon)
         {
@@ -448,7 +448,31 @@ public sealed partial class SimulationWorld
         return true;
     }
 
-    private static bool TryHandleMedicOffhandToggle(PlayerEntity player)
+    private bool TryHandleDemomanOffhandToggle(PlayerEntity player)
+    {
+        if (player.ClassId != PlayerClass.Demoman || !player.HasExperimentalOffhandWeapon)
+        {
+            return false;
+        }
+
+        if (player.IsAcquiredWeaponEquipped)
+        {
+            player.StowAcquiredWeapon();
+        }
+
+        if (player.IsExperimentalOffhandEquipped)
+        {
+            player.StowExperimentalOffhandWeapon();
+        }
+        else
+        {
+            player.EquipExperimentalOffhandWeapon();
+        }
+
+        return true;
+    }
+
+    private bool TryHandleMedicOffhandToggle(PlayerEntity player)
     {
         if (player.ClassId != PlayerClass.Medic || !player.HasExperimentalOffhandWeapon)
         {
@@ -554,7 +578,7 @@ public sealed partial class SimulationWorld
         }
 
         // Offhand weapon swapping should remain available even if secondary abilities are disabled.
-        if (TryHandleSoldierOffhandToggle(player) || TryHandleMedicOffhandToggle(player))
+        if (TryHandleSoldierOffhandToggle(player) || TryHandleMedicOffhandToggle(player) || TryHandleDemomanOffhandToggle(player))
         {
             return;
         }
@@ -653,7 +677,7 @@ public sealed partial class SimulationWorld
         return false;
     }
 
-    private static void TryHandleLegacyNetworkSecondaryWeaponFire(PlayerEntity player, PlayerInputSnapshot input)
+    private void TryHandleLegacyNetworkSecondaryWeaponFire(PlayerEntity player, PlayerInputSnapshot input)
     {
         _ = input;
         TryHandleSoldierOffhandToggle(player);
