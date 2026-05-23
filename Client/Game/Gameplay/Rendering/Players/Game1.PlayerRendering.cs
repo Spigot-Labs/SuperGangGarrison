@@ -81,11 +81,16 @@ public partial class Game1
 
     private static Rectangle GetPlayerScreenBounds(PlayerEntity player, Vector2 renderPosition, Vector2 cameraPosition)
     {
-        player.GetCollisionBoundsAt(renderPosition.X, renderPosition.Y, out var left, out var top, out var right, out var bottom);
-        var screenLeft = (int)MathF.Floor(left - cameraPosition.X);
-        var screenTop = (int)MathF.Floor(top - cameraPosition.Y);
-        var screenRight = (int)MathF.Ceiling(right - cameraPosition.X);
-        var screenBottom = (int)MathF.Ceiling(bottom - cameraPosition.Y);
+        // Round renderPosition the same way sprite rendering does (AwayFromZero) so that
+        // name/health overlays transition at the same sub-pixel threshold as the sprite,
+        // preventing them from wobbling relative to the character as it moves.
+        var roundedX = MathF.Round(renderPosition.X, MidpointRounding.AwayFromZero);
+        var roundedY = MathF.Round(renderPosition.Y, MidpointRounding.AwayFromZero);
+        player.GetCollisionBoundsAt(roundedX, roundedY, out var left, out var top, out var right, out var bottom);
+        var screenLeft = (int)MathF.Round(left - cameraPosition.X, MidpointRounding.AwayFromZero);
+        var screenTop = (int)MathF.Round(top - cameraPosition.Y, MidpointRounding.AwayFromZero);
+        var screenRight = (int)MathF.Round(right - cameraPosition.X, MidpointRounding.AwayFromZero);
+        var screenBottom = (int)MathF.Round(bottom - cameraPosition.Y, MidpointRounding.AwayFromZero);
         return new Rectangle(
             screenLeft,
             screenTop,
