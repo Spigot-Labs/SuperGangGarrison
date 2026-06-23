@@ -12,9 +12,20 @@ public sealed partial class SimulationWorld
     private const float ObjectiveCapturePointValue = 2f;
     private const float BuildingDestructionPointValue = 1f;
     private const float UberActivationPointValue = 1f;
+    private const int HealingHealthPerPoint = 800;
 
-    private static void AwardKillPoints(PlayerEntity victim, PlayerEntity killer, string? weaponSpriteName)
+    private bool ShouldAwardRoundPoints()
     {
+        return !MatchState.IsEnded;
+    }
+
+    private void AwardKillPoints(PlayerEntity victim, PlayerEntity killer, string? weaponSpriteName)
+    {
+        if (!ShouldAwardRoundPoints())
+        {
+            return;
+        }
+
         if (ReferenceEquals(victim, killer) || killer.Team == victim.Team)
         {
             return;
@@ -38,8 +49,13 @@ public sealed partial class SimulationWorld
         }
     }
 
-    private static void AwardAssistPoints(PlayerEntity? assistant, PlayerEntity victim, PlayerEntity killer)
+    private void AwardAssistPoints(PlayerEntity? assistant, PlayerEntity victim, PlayerEntity killer)
     {
+        if (!ShouldAwardRoundPoints())
+        {
+            return;
+        }
+
         if (assistant is null
             || ReferenceEquals(assistant, victim)
             || ReferenceEquals(assistant, killer)
@@ -53,24 +69,62 @@ public sealed partial class SimulationWorld
         assistant.AddPoints(AssistPointValue);
     }
 
-    private static void AwardObjectiveCapturePoints(PlayerEntity player)
+    private void AwardObjectiveCapturePoints(PlayerEntity player)
     {
+        if (!ShouldAwardRoundPoints())
+        {
+            return;
+        }
+
         player.AddPoints(ObjectiveCapturePointValue);
     }
 
-    private static void AwardMedicUberActivationPoints(PlayerEntity player)
+    private void AwardMedicUberActivationPoints(PlayerEntity player)
     {
+        if (!ShouldAwardRoundPoints())
+        {
+            return;
+        }
+
         player.AddPoints(UberActivationPointValue);
     }
 
-    private static void AwardSentryDestructionPoints(SentryEntity sentry, PlayerEntity? attacker)
+    private void AwardSentryDestructionPoints(SentryEntity sentry, PlayerEntity? attacker)
     {
+        if (!ShouldAwardRoundPoints())
+        {
+            return;
+        }
+
         if (attacker is null || attacker.Id == sentry.OwnerPlayerId)
         {
             return;
         }
 
         attacker.AddPoints(BuildingDestructionPointValue);
+    }
+
+    private void AwardHealingPoints(PlayerEntity healer, int healedAmount)
+    {
+        if (healedAmount <= 0)
+        {
+            return;
+        }
+
+        var previousMilestone = healer.HealPoints / HealingHealthPerPoint;
+        healer.AddHealPoints(healedAmount);
+
+        if (!ShouldAwardRoundPoints())
+        {
+            return;
+        }
+
+        var currentMilestone = healer.HealPoints / HealingHealthPerPoint;
+        var earnedPoints = currentMilestone - previousMilestone;
+        if (earnedPoints > 0)
+        {
+            healer.AddPoints(earnedPoints);
+        }
     }
 
     private PlayerEntity? FindHealingMedicPlayer(int targetPlayerId)

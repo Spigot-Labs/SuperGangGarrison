@@ -32,7 +32,8 @@ internal sealed class ServerIncomingMessageDispatcher(
     ServerBanService? banService = null,
     Action<ClientSession, CustomBubbleUploadMessage>? receiveCustomBubbleUpload = null,
     Action<ClientSession>? receiveCustomBubbleClear = null,
-    Action<ServerTransportPeer>? sendCustomBubbleStates = null)
+    Action<ServerTransportPeer>? sendCustomBubbleStates = null,
+    Func<bool>? localPredictionEnabledGetter = null)
 {
     public void Dispatch(IProtocolMessage message, ServerTransportPeer remotePeer)
     {
@@ -113,15 +114,7 @@ internal sealed class ServerIncomingMessageDispatcher(
                 if (TryGetAuthorizedClient(remotePeer, out var inputClient))
                 {
                     inputClient.LastSeen = elapsedGetter();
-                    var playerX = 0f;
-                    var playerY = 0f;
-                    if (world.TryGetNetworkPlayer(inputClient.Slot, out var inputPlayer))
-                    {
-                        playerX = inputPlayer.X;
-                        playerY = inputPlayer.Y;
-                    }
-
-                    inputClient.TrySetLatestInput(input.Sequence, ToCoreInput(input, playerX, playerY));
+                    inputClient.TrySetLatestInput(input.Sequence, ToCoreInput(input));
                     inputClient.PingMilliseconds = input.PingMilliseconds;
                     if (input.ChatBubbleFrameIndex >= 0)
                     {
@@ -204,7 +197,8 @@ internal sealed class ServerIncomingMessageDispatcher(
                 existingMapMetadata.IsCustomMap,
                 existingMapMetadata.MapDownloadUrl,
                 existingMapMetadata.MapContentHash,
-                world.Level.MapScale));
+                world.Level.MapScale,
+                localPredictionEnabledGetter?.Invoke() == true));
             if (passwordRequired && !existingClient.IsAuthorized)
             {
                 sendMessage(remotePeer, new PasswordRequestMessage());
@@ -284,7 +278,8 @@ internal sealed class ServerIncomingMessageDispatcher(
             mapMetadata.IsCustomMap,
             mapMetadata.MapDownloadUrl,
             mapMetadata.MapContentHash,
-            world.Level.MapScale));
+            world.Level.MapScale,
+            localPredictionEnabledGetter?.Invoke() == true));
         if (passwordRequired && !client.IsAuthorized)
         {
             sendMessage(remotePeer, new PasswordRequestMessage());

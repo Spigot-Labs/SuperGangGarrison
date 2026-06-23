@@ -144,6 +144,8 @@ public sealed class OpenGarrisonPreferencesDocument
 
     public bool AudioMuted { get; set; }
 
+    public int MasterVolumePercent { get; set; } = 100;
+
     public int MenuMusicVolumePercent { get; set; } = 70;
 
     public int IngameMusicVolumePercent { get; set; } = 70;
@@ -280,6 +282,7 @@ public sealed class OpenGarrisonPreferencesDocument
             ShowUberOutlinesEnabled = ini.GetBool(SettingsSection, "Show Uber Outlines", true),
             ProjectileTeamTintEnabled = ini.GetBool(SettingsSection, "Projectile Team Tint", true),
             AudioMuted = ini.GetBool(SettingsSection, "Audio Muted", false),
+            MasterVolumePercent = Math.Clamp(ini.GetInt(SettingsSection, "Master Volume", 100), 0, 100),
             MenuMusicVolumePercent = Math.Clamp(ini.GetInt(SettingsSection, "Menu Music Volume", 100), 0, 100),
             IngameMusicVolumePercent = Math.Clamp(ini.GetInt(SettingsSection, "Ingame Music Volume", 100), 0, 100),
             DynamicMusicEnabled = ini.GetBool(SettingsSection, "Dynamic Music", true),
@@ -374,6 +377,7 @@ public sealed class OpenGarrisonPreferencesDocument
         ini.SetBool(SettingsSection, "Show Uber Outlines", ShowUberOutlinesEnabled);
         ini.SetBool(SettingsSection, "Projectile Team Tint", ProjectileTeamTintEnabled);
         ini.SetBool(SettingsSection, "Audio Muted", AudioMuted);
+        ini.SetInt(SettingsSection, "Master Volume", Math.Clamp(MasterVolumePercent, 0, 100));
         ini.SetInt(SettingsSection, "Menu Music Volume", MenuMusicVolumePercent);
         ini.SetInt(SettingsSection, "Ingame Music Volume", IngameMusicVolumePercent);
         ini.SetBool(SettingsSection, "Dynamic Music", DynamicMusicEnabled);
@@ -442,6 +446,7 @@ public sealed class OpenGarrisonPreferencesDocument
         ini.SetInt(ServerAdvancedSection, "CompetitiveSetupSeconds", HostSettings.CompetitiveSetupSeconds);
         ini.SetBool(ServerAdvancedSection, "RandomSpreadEnabled", HostSettings.RandomSpreadEnabled);
         ini.SetBool(ServerAdvancedSection, "SniperAimIndicatorEnabled", HostSettings.SniperAimIndicatorEnabled);
+        ini.SetBool(ServerAdvancedSection, "LocalPredictionEnabled", HostSettings.LocalPredictionEnabled);
         ini.SetBool(ServerAdvancedSection, "RoundEndFriendlyFireEnabled", HostSettings.RoundEndFriendlyFireEnabled);
         ini.SetBool(ServerAdvancedSection, "SwitchTeamsAfterRoundEnd", HostSettings.SwitchTeamsAfterRoundEnd);
         ini.SetInt(ServerAdvancedSection, "TeamShuffleAfterWins", OpenGarrisonHostSettings.NormalizeTeamShuffleAfterWins(HostSettings.TeamShuffleAfterWins));
@@ -754,6 +759,8 @@ public sealed class OpenGarrisonHostSettings
 
     public bool SniperAimIndicatorEnabled { get; set; } = true;
 
+    public bool LocalPredictionEnabled { get; set; }
+
     public bool RoundEndFriendlyFireEnabled { get; set; }
 
     public bool SwitchTeamsAfterRoundEnd { get; set; }
@@ -865,6 +872,7 @@ public sealed class OpenGarrisonHostSettings
             SecondaryAbilitiesEnabled = SecondaryAbilitiesEnabled,
             RandomSpreadEnabled = RandomSpreadEnabled,
             SniperAimIndicatorEnabled = SniperAimIndicatorEnabled,
+            LocalPredictionEnabled = LocalPredictionEnabled,
             RoundEndFriendlyFireEnabled = RoundEndFriendlyFireEnabled,
             SwitchTeamsAfterRoundEnd = SwitchTeamsAfterRoundEnd,
             TeamShuffleAfterWins = NormalizeTeamShuffleAfterWins(TeamShuffleAfterWins),
@@ -921,6 +929,7 @@ public sealed class OpenGarrisonHostSettings
                 ? ini.GetBool("Server.Advanced", "RandomSpreadEnabled", true)
                 : true,
             SniperAimIndicatorEnabled = ini.GetBool("Server.Advanced", "SniperAimIndicatorEnabled", true),
+            LocalPredictionEnabled = ini.GetBool("Server.Advanced", "LocalPredictionEnabled", false),
             RoundEndFriendlyFireEnabled = ini.GetBool("Server.Advanced", "RoundEndFriendlyFireEnabled", false),
             SwitchTeamsAfterRoundEnd = ini.GetBool("Server.Advanced", "SwitchTeamsAfterRoundEnd", false),
             TeamShuffleAfterWins = NormalizeTeamShuffleAfterWins(

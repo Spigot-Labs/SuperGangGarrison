@@ -103,7 +103,8 @@ public sealed record WelcomeMessage(
     bool IsCustomMap = false,
     string MapDownloadUrl = "",
     string MapContentHash = "",
-    float MapScale = 1f) : IProtocolMessage
+    float MapScale = 1f,
+    bool LocalPredictionEnabled = false) : IProtocolMessage
 {
     public MessageType Type => MessageType.Welcome;
 }
@@ -818,7 +819,10 @@ public sealed record SnapshotKillFeedEntry(
     int KillerPlayerId = -1,
     int VictimPlayerId = -1,
     KillFeedSpecialType SpecialType = KillFeedSpecialType.None,
-    ulong EventId = 0);
+    ulong EventId = 0)
+{
+    public IReadOnlyList<int> InvolvedPlayerIds { get; init; } = Array.Empty<int>();
+}
 
 [Flags]
 public enum SnapshotEntityCollectionCompletenessFlags : ushort

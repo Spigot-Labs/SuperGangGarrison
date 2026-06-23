@@ -16,6 +16,9 @@ public partial class Game1
 {
     private static string _browserLastGameplayRenderTrace = "not-started";
     private static readonly Queue<string> _browserRecentGameplayRenderTraces = new();
+    private const float GameplayHudCoveredPlayerOpacity = 0.45f;
+    private const float GameplayHudAutoFadeSpeedPerSecond = 4f;
+    private const float WeaponFireHudRumbleDurationSeconds = 0.12f;
 
     public static string GetBrowserLastGameplayRenderTrace()
     {
@@ -31,6 +34,194 @@ public partial class Game1
 
     private const string GameplayRenderTraceFileName = "client-gameplay-render-trace.log";
     private static readonly bool GameplayRenderTraceEnabled = GetGameplayRenderTraceEnabled();
+
+    // Renders the whole HUD layer into a dedicated target before the world pass so a single alpha
+    // multiply at composite time can dim the entire HUD uniformly. Only runs when the user lowered
+    // HUD opacity below max; otherwise the default direct-draw path is taken with no behavior change.
+    private void PrepareGameplayHudOpacityComposite(MouseState mouse, Vector2 cameraPosition)
+    {
+        _hudOpacityCompositePending = false;
+        _deferDamageVignetteForHudOpacityComposite = false;
+        _damageVignetteCompositeDeferred = false;
+        var effectiveOpacity = GetEffectiveGameplayHudCompositeOpacity();
+        if (_gameplayHudHidden
+            || (effectiveOpacity >= HudLayoutProfile.MaxHudOpacity - 0.001f && _weaponFireHudRumbleRemainingSeconds <= 0f)
+            || OperatingSystem.IsBrowser())
+        {
+            return;
+        }
+
+        EnsureHudRenderTarget();
+        if (_hudRenderTarget is null)
+        {
+            return;
+        }
+
+        GraphicsDevice.SetRenderTarget(_hudRenderTarget);
+        GraphicsDevice.Clear(Color.Transparent);
+        _spriteBatch.Begin(samplerState: SamplerState.PointClamp, rasterizerState: RasterizerState.CullNone);
+        _deferDamageVignetteForHudOpacityComposite = true;
+        try
+        {
+            DrawGameplayHudLayers(mouse, cameraPosition);
+        }
+        finally
+        {
+            _deferDamageVignetteForHudOpacityComposite = false;
+        }
+
+        _spriteBatch.End();
+        GraphicsDevice.SetRenderTarget(null);
+        _hudOpacityCompositePending = true;
+    }
+
+    // Called at the HUD draw point inside the logical frame: either blits the pre-rendered, dimmed
+    // HUD target onto the active batch, or falls through to the normal direct HUD draw.
+    private void DrawGameplayHudLayersOrComposite(MouseState mouse, Vector2 cameraPosition)
+    {
+        if (!_hudOpacityCompositePending || _hudRenderTarget is null)
+        {
+            DrawGameplayHudLayers(mouse, cameraPosition);
+            return;
+        }
+
+        _hudOpacityCompositePending = false;
+        if (_damageVignetteCompositeDeferred)
+        {
+            _damageVignetteCompositeDeferred = false;
+            DrawDamageVignette();
+        }
+
+        var opacity = GetEffectiveGameplayHudCompositeOpacity();
+        _spriteBatch.Draw(_hudRenderTarget, GetWeaponFireHudRumbleOffset(), Color.White * opacity);
+    }
+
+    private float GetEffectiveGameplayHudCompositeOpacity()
+    {
+        return HudLayoutProfile.NormalizeHudOpacity(_hudLayoutProfile.HudOpacity);
+    }
+
+    private Color ApplyCurrentHudElementOpacity(Color color)
+    {
+        var opacity = Math.Clamp(_activeHudElementOpacity, 0f, HudLayoutProfile.MaxHudOpacity);
+        return opacity >= HudLayoutProfile.MaxHudOpacity - 0.001f
+            ? color
+            : color * opacity;
+    }
+
+    private float GetGameplayHudElementDrawOpacity(string id, Vector2 cameraPosition)
+    {
+        var targetOpacity = ShouldAutoFadeGameplayHudElementForCoveredPlayer(id, cameraPosition)
+            ? GameplayHudCoveredPlayerOpacity
+            : HudLayoutProfile.MaxHudOpacity;
+        var currentOpacity = _hudElementAutoFadeOpacities.TryGetValue(id, out var cachedOpacity)
+            ? cachedOpacity
+            : HudLayoutProfile.MaxHudOpacity;
+
+        var step = Math.Max(0f, _clientUpdateElapsedSeconds) * GameplayHudAutoFadeSpeedPerSecond;
+        var nextOpacity = currentOpacity < targetOpacity
+            ? MathF.Min(targetOpacity, currentOpacity + step)
+            : MathF.Max(targetOpacity, currentOpacity - step);
+
+        if (Math.Abs(nextOpacity - HudLayoutProfile.MaxHudOpacity) <= 0.001f
+            && Math.Abs(targetOpacity - HudLayoutProfile.MaxHudOpacity) <= 0.001f)
+        {
+            _hudElementAutoFadeOpacities.Remove(id);
+            return HudLayoutProfile.MaxHudOpacity;
+        }
+
+        _hudElementAutoFadeOpacities[id] = nextOpacity;
+        return nextOpacity;
+    }
+
+    private bool ShouldAutoFadeGameplayHudElementForCoveredPlayer(string id, Vector2 cameraPosition)
+    {
+        if (IsLocalSpectatorPresentationActive()
+            || IsGameplayDeathCamActive())
+        {
+            return false;
+        }
+
+        if (!_hudElementLastBounds.TryGetValue(id, out var elementBounds)
+            || elementBounds.Width <= 0
+            || elementBounds.Height <= 0)
+        {
+            return false;
+        }
+
+        foreach (var player in EnumerateRenderablePlayers())
+        {
+            if (!player.IsAlive || GetPlayerVisibilityAlpha(player) <= 0f)
+            {
+                continue;
+            }
+
+            var playerBounds = GetPlayerScreenBounds(player, GetRenderPosition(player), cameraPosition);
+            if (elementBounds.Intersects(playerBounds))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void TriggerLocalWeaponFireHudRumble(float intensity = 1f)
+    {
+        if (!_portraitRumbleEnabled || intensity <= 0f)
+        {
+            return;
+        }
+
+        _weaponFireHudRumbleSeed += 1;
+        _weaponFireHudRumbleRemainingSeconds = WeaponFireHudRumbleDurationSeconds;
+        _weaponFireHudRumbleIntensity = Math.Clamp(intensity, 0.35f, 1.2f);
+    }
+
+    private Vector2 GetWeaponFireHudRumbleOffset()
+    {
+        if (!_portraitRumbleEnabled || _weaponFireHudRumbleRemainingSeconds <= 0f)
+        {
+            _weaponFireHudRumbleRemainingSeconds = 0f;
+            _weaponFireHudRumbleIntensity = 0f;
+            return Vector2.Zero;
+        }
+
+        var progress = Math.Clamp(_weaponFireHudRumbleRemainingSeconds / WeaponFireHudRumbleDurationSeconds, 0f, 1f);
+        var falloff = progress * progress;
+        var shakePixels = 1.35f * _weaponFireHudRumbleIntensity * falloff;
+        var seed = _weaponFireHudRumbleSeed * 11.71f;
+        var phase = (WeaponFireHudRumbleDurationSeconds - _weaponFireHudRumbleRemainingSeconds) * 130f;
+        var offset = new Vector2(
+            MathF.Sin(seed + phase) * shakePixels,
+            MathF.Cos((seed * 0.59f) + (phase * 1.43f)) * shakePixels * 0.55f);
+
+        _weaponFireHudRumbleRemainingSeconds = Math.Max(
+            0f,
+            _weaponFireHudRumbleRemainingSeconds - Math.Max(0f, _clientUpdateElapsedSeconds));
+        return offset;
+    }
+
+    private void EnsureHudRenderTarget()
+    {
+        if (_hudRenderTarget is not null
+            && _hudRenderTarget.Width == ViewportWidth
+            && _hudRenderTarget.Height == ViewportHeight)
+        {
+            return;
+        }
+
+        _hudRenderTarget?.Dispose();
+        _hudRenderTarget = new RenderTarget2D(
+            GraphicsDevice,
+            ViewportWidth,
+            ViewportHeight,
+            mipMap: false,
+            SurfaceFormat.Color,
+            DepthFormat.None,
+            preferredMultiSampleCount: 0,
+            RenderTargetUsage.PreserveContents);
+    }
 
     private void DrawGameplayHudLayers(MouseState mouse, Vector2 cameraPosition)
     {
@@ -52,7 +243,15 @@ public partial class Game1
         var deathCamActive = !_world.LocalPlayer.IsAlive && IsGameplayDeathCamActive();
         var localPlayerAlive = _world.LocalPlayer.IsAlive;
         WriteGameplayRenderTrace("hud begin");
-        DrawDamageVignette();
+        if (_deferDamageVignetteForHudOpacityComposite)
+        {
+            _damageVignetteCompositeDeferred = true;
+        }
+        else
+        {
+            DrawDamageVignette();
+        }
+
         WriteGameplayRenderTrace("hud after damagevignette");
         DrawKillFeedHud();
         WriteGameplayRenderTrace("hud after killfeed");
@@ -79,23 +278,23 @@ public partial class Game1
         if (!IsLocalSpectatorPresentationActive() && localPlayerAlive && !deathCamActive)
         {
             CollectGameplayHudElements();
-            DrawGameplayHudElements(0, 10);
+            DrawGameplayHudElements(0, 10, cameraPosition);
             WriteGameplayRenderTrace("hud after localhealth");
             _lastGameplayHudMouse = mouse;
-            DrawGameplayHudElements(11, 11);
+            DrawGameplayHudElements(11, 11, cameraPosition);
             WriteGameplayRenderTrace("hud after ltdbufficon");
             DrawExperimentalHealingHudIndicators();
             WriteGameplayRenderTrace("hud after experimentalhealing");
-            DrawGameplayHudElements(12, 29);
+            DrawGameplayHudElements(12, 29, cameraPosition);
             WriteGameplayRenderTrace("hud after ammo");
             var aimScreenPosition = GetEffectiveAimScreenPosition(mouse, cameraPosition);
             DrawSniperHud(aimScreenPosition);
             WriteGameplayRenderTrace("hud after sniper");
-            DrawGameplayHudElements(30, 39);
+            DrawGameplayHudElements(30, 39, cameraPosition);
             WriteGameplayRenderTrace("hud after medic");
             DrawHealerRadarHud(cameraPosition, mouse);
             WriteGameplayRenderTrace("hud after healerradar");
-            DrawGameplayHudElements(40, int.MaxValue);
+            DrawGameplayHudElements(40, int.MaxValue, cameraPosition);
             WriteGameplayRenderTrace("hud after engineer");
         }
 

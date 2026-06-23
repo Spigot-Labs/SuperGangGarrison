@@ -13,6 +13,12 @@ using static ServerHelpers;
 
 partial class GameServer
 {
+    private const int UdpSocketBufferBytes = 4 * 1024 * 1024;
+    private const int MinimumIdleSleepMilliseconds = 1;
+    private const int MaximumIdleSleepMilliseconds = 8;
+    private const double LongServerLoopDiagnosticThresholdMilliseconds = 100d;
+    private static readonly TimeSpan LongServerLoopDiagnosticCooldown = TimeSpan.FromSeconds(5);
+
     public void Run(CancellationToken cancellationToken)
     {
         using var udp = new UdpClient(_port);
@@ -48,8 +54,24 @@ partial class GameServer
     {
         _udp = udp;
         _udp.Client.Blocking = false;
+        TryConfigureUdpSocketBuffers(_udp.Client);
         TryDisableUdpConnectionReset(_udp.Client);
         _messageTransport = new OpenGarrison.Server.CompositeServerMessageTransport(_udp);
+    }
+
+    private static void TryConfigureUdpSocketBuffers(Socket socket)
+    {
+        try
+        {
+            socket.SendBufferSize = Math.Max(socket.SendBufferSize, UdpSocketBufferBytes);
+            socket.ReceiveBufferSize = Math.Max(socket.ReceiveBufferSize, UdpSocketBufferBytes);
+        }
+        catch (SocketException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
     }
 
     private void InitializeWebSocketHost()
@@ -141,6 +163,7 @@ partial class GameServer
         _autoBalanceEnabled = host.AutoBalanceEnabled;
         _secondaryAbilitiesEnabled = host.SecondaryAbilitiesEnabled;
         _randomSpreadEnabled = host.RandomSpreadEnabled;
+        _localPredictionEnabled = host.LocalPredictionEnabled;
         _competitiveReadyUpEnabled = host.CompetitiveReadyUpEnabled;
         _competitiveSetupSeconds = Math.Clamp(host.CompetitiveSetupSeconds, 0, 120);
         _botAutofillEnabled = host.BotAutofillEnabled;
@@ -232,6 +255,7 @@ partial class GameServer
 
         Console.WriteLine($"Auto-balance: {(_autoBalanceEnabled ? "Enabled" : "Disabled")}");
         Console.WriteLine($"Random bullet spread: {(_randomSpreadEnabled ? "Enabled" : "Disabled")}");
+        Console.WriteLine($"Local prediction: {(_localPredictionEnabled ? "Enabled" : "Disabled")}");
         Console.WriteLine($"Special abilities: {(_secondaryAbilitiesEnabled ? "Enabled" : "Disabled")}");
         Console.WriteLine($"Snapshot budget mode: {OpenGarrison.Server.SnapshotBudgetModeParser.ToConfigString(_snapshotBudgetMode)}");
         Console.WriteLine(_competitiveReadyUpEnabled
@@ -332,6 +356,8 @@ partial class GameServer
         var simTicksAdvancedMax = 0;
         var simAdvanceCallsWithTicks = 0;
         var simulationBacklogDropSampleCount = 0;
+        var nextPluginHeartbeatAt = TimeSpan.Zero;
+        var lastLongLoopDiagnosticAt = TimeSpan.MinValue;
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -350,7 +376,11 @@ partial class GameServer
                 serverLoopElapsedTotalMilliseconds += elapsedMilliseconds;
                 serverLoopElapsedMaxMilliseconds = Math.Max(serverLoopElapsedMaxMilliseconds, elapsedMilliseconds);
                 _scheduler.RunDueTasks();
-                _pluginHost?.NotifyServerHeartbeat(now);
+                if (now >= nextPluginHeartbeatAt)
+                {
+                    _pluginHost?.NotifyServerHeartbeat(now);
+                    nextPluginHeartbeatAt = now + GetServerPluginHeartbeatInterval();
+                }
 
                 var ticks = ServerSimulationBatch.Advance(
                     _simulator,
@@ -401,6 +431,14 @@ partial class GameServer
                 }
                 _lobbyRegistrar?.Tick(now, BuildLobbyServerName(_serverName, _world, _clientsBySlot, _passwordRequired, _maxPlayableClients));
                 _httpRegistryHeartbeat?.Tick(now);
+                if (elapsedMilliseconds >= LongServerLoopDiagnosticThresholdMilliseconds
+                    && (lastLongLoopDiagnosticAt == TimeSpan.MinValue
+                        || now - lastLongLoopDiagnosticAt >= LongServerLoopDiagnosticCooldown))
+                {
+                    WriteLongServerLoopDiagnostic(eventLog, elapsedMilliseconds, ticks, now);
+                    lastLongLoopDiagnosticAt = now;
+                }
+
                 if (ticks > 0)
                 {
                     _eventReporter.PublishGameplayEvents(_snapshotBroadcaster.LastCapturedTransientEvents);
@@ -542,7 +580,7 @@ partial class GameServer
                     }
                 }
 
-                Thread.Sleep(1);
+                SleepUntilNextServerLoop(ticks);
             }
         }
         finally
@@ -566,6 +604,70 @@ partial class GameServer
             _pluginHost?.ShutdownPlugins();
             Console.WriteLine("[server] shutdown complete.");
         }
+    }
+
+    private TimeSpan GetServerPluginHeartbeatInterval()
+    {
+        var fixedDeltaSeconds = _config.FixedDeltaSeconds;
+        if (!double.IsFinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0d)
+        {
+            fixedDeltaSeconds = 1d / 30d;
+        }
+
+        return TimeSpan.FromSeconds(Math.Clamp(fixedDeltaSeconds, 1d / 60d, 0.1d));
+    }
+
+    private void SleepUntilNextServerLoop(int ticksAdvanced)
+    {
+        if (ticksAdvanced > 0 || _messageTransport.HasPendingMessages)
+        {
+            Thread.Yield();
+            return;
+        }
+
+        var fixedDeltaSeconds = _config.FixedDeltaSeconds;
+        if (!double.IsFinite(fixedDeltaSeconds) || fixedDeltaSeconds <= 0d)
+        {
+            Thread.Sleep(MinimumIdleSleepMilliseconds);
+            return;
+        }
+
+        var remainingMilliseconds = (1d - _simulator.InterpolationAlpha) * fixedDeltaSeconds * 1000d;
+        var sleepMilliseconds = (int)Math.Clamp(
+            Math.Floor(remainingMilliseconds - MinimumIdleSleepMilliseconds),
+            MinimumIdleSleepMilliseconds,
+            MaximumIdleSleepMilliseconds);
+        Thread.Sleep(sleepMilliseconds);
+    }
+
+    private void WriteLongServerLoopDiagnostic(
+        PersistentServerEventLog eventLog,
+        double elapsedMilliseconds,
+        int ticksAdvanced,
+        TimeSpan now)
+    {
+        var activePlayableCount = _world.EnumerateActiveNetworkPlayers().Count();
+        var botMetrics = _botManager.Metrics;
+        eventLog.Write(
+            "server_loop_long_frame",
+            ("frame", _world.Frame),
+            ("elapsed_ms", elapsedMilliseconds),
+            ("ticks_advanced", ticksAdvanced),
+            ("clients", _clientsBySlot.Count),
+            ("active_playable", activePlayableCount),
+            ("spectators", _clientsBySlot.Keys.Count(IsSpectatorSlot)),
+            ("bot_count", _botManager.BotSlots.Count),
+            ("botbrain_navigation_loaded_count", botMetrics.BotBrainNavigationLoadedCount),
+            ("botbrain_navigation_missing_count", botMetrics.BotBrainNavigationMissingCount),
+            ("simulator_alpha", _simulator.InterpolationAlpha),
+            ("uptime_seconds", now.TotalSeconds),
+            ("map_name", _world.Level.Name),
+            ("map_area_index", _world.Level.MapAreaIndex),
+            ("mode", _world.MatchRules.Mode));
+        Console.WriteLine(
+            $"[server] long loop elapsed={elapsedMilliseconds:0.###}ms " +
+            $"frame={_world.Frame} ticks={ticksAdvanced} clients={_clientsBySlot.Count} " +
+            $"bots={_botManager.BotSlots.Count} map={_world.Level.Name}");
     }
 
     private void InitializePluginRuntime()
@@ -934,6 +1036,12 @@ partial class GameServer
                 _world.SniperAimIndicatorEnabled = value;
             });
         registry.RegisterBoolean(
+            "sv_local_prediction",
+            "Allow connected clients to locally predict their own movement and weapon state.",
+            _localPredictionEnabled,
+            () => _localPredictionEnabled,
+            value => _localPredictionEnabled = value);
+        registry.RegisterBoolean(
             "sv_specialabilities",
             "Enable or disable class special abilities, modular gameplay abilities, and ability-owned alternate weapons on the server.",
             _secondaryAbilitiesEnabled,
@@ -1130,7 +1238,8 @@ partial class GameServer
             _banService,
             receiveCustomBubbleUpload: _outboundMessaging.ReceiveCustomBubbleUpload,
             receiveCustomBubbleClear: _outboundMessaging.ReceiveCustomBubbleClear,
-            sendCustomBubbleStates: _outboundMessaging.SendCustomBubbleStatesToClient);
+            sendCustomBubbleStates: _outboundMessaging.SendCustomBubbleStatesToClient,
+            localPredictionEnabledGetter: () => _localPredictionEnabled);
         _incomingPacketPump = new OpenGarrison.Server.ServerIncomingPacketPump(
             _messageTransport,
             messageDispatcher,

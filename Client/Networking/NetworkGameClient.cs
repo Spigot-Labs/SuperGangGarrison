@@ -560,7 +560,7 @@ internal sealed class NetworkGameClient : IDisposable
             schemaVersion));
     }
 
-    public uint SendInput(PlayerInputSnapshot input, float localPlayerX, float localPlayerY)
+    public uint SendInput(PlayerInputSnapshot input, float aimOriginX, float aimOriginY)
     {
         if (!IsConnected)
         {
@@ -589,8 +589,8 @@ internal sealed class NetworkGameClient : IDisposable
         var inputMessage = new InputStateMessage(
             sequence, 
             buttons, 
-            input.AimWorldX - localPlayerX, 
-            input.AimWorldY - localPlayerY, 
+            input.AimWorldX - aimOriginX, 
+            input.AimWorldY - aimOriginY, 
             _pendingChatBubbleFrameIndex,
             input.IsUsingBinoculars,
             input.BinocularsFocusX,
@@ -807,7 +807,7 @@ internal sealed class NetworkGameClient : IDisposable
             return;
         }
 
-        var payload = ProtocolCodec.Serialize(message);
+        var payload = ProtocolCodec.Serialize(message, GetSendCompressionSettings(message));
         RecordSendDiagnostics(message, payload.Length);
         if (SimulatedLatencyMilliseconds > 0)
         {
@@ -817,6 +817,13 @@ internal sealed class NetworkGameClient : IDisposable
         }
 
         transport.Send(payload);
+    }
+
+    private static ProtocolCompressionSettings GetSendCompressionSettings(IProtocolMessage message)
+    {
+        return message is CustomBubbleUploadMessage
+            ? ProtocolCompressionSettings.AllMessages
+            : ProtocolCompressionSettings.Default;
     }
 
     private void CaptureInboundDemoMessage(INetworkClientMessageTransport transport, IProtocolMessage message, byte[] payload)

@@ -4,6 +4,7 @@ namespace OpenGarrison.Core;
 
 public sealed partial class SimulationWorld
 {
+    private const int VipDeathTimePenaltySeconds = 15;
     private const int VipWarmupSeconds = 10;
 
     private bool IsPracticeVipRulesActive => _practiceVipRulesEnabled && MatchRules.Mode == GameModeKind.ControlPoint;
@@ -112,7 +113,7 @@ public sealed partial class SimulationWorld
     {
         _vipSlotsByTeam.Clear();
         _preferredVipSlotsByTeam.Clear();
-        _vipWarmupTicksRemaining = IsVipModeActive && RequiresDualVip()
+        _vipWarmupTicksRemaining = ShouldStartVipWarmup()
             ? Math.Max(1, VipWarmupSeconds * Config.TicksPerSecond)
             : 0;
         _vipAssignmentVersion += 1;
@@ -165,15 +166,60 @@ public sealed partial class SimulationWorld
         return TryGetNetworkPlayerSlot(player, out var slot) && IsVipSlot(slot);
     }
 
+    private void ApplyVipDeathTimerPenalty(PlayerEntity victim, PlayerEntity? killer)
+    {
+        if (!IsVipModeActive
+            || VipWarmupActive
+            || MatchState.IsEnded
+            || !IsVipPlayer(victim)
+            || killer is null
+            || ReferenceEquals(killer, victim)
+            || killer.Team == victim.Team)
+        {
+            return;
+        }
+
+        var penaltyTicks = VipDeathTimePenaltySeconds * Config.TicksPerSecond;
+        MatchState = MatchState with
+        {
+            TimeRemainingTicks = Math.Max(0, MatchState.TimeRemainingTicks - penaltyTicks),
+        };
+    }
+
     private bool CanPlayerCaptureInVipMode(PlayerEntity player)
     {
         return !IsVipModeActive
             || (!VipWarmupActive && player.ClassId == PlayerClass.Quote && IsVipPlayer(player));
     }
 
+    private bool CanPlayerAffectControlPointInVipMode(PlayerEntity player)
+    {
+        return !IsVipModeActive || !VipWarmupActive;
+    }
+
+    private bool CanPlayerPauseVipCaptureDecay(PlayerEntity player)
+    {
+        return IsVipModeActive
+            && !VipWarmupActive
+            && !IsVipPlayer(player)
+            && IsVipDead(player.Team);
+    }
+
+    private bool IsVipDead(PlayerTeam team)
+    {
+        return _vipSlotsByTeam.TryGetValue(team, out var slot)
+            && TryGetNetworkPlayer(slot, out var vip)
+            && !vip.IsAlive;
+    }
+
     private bool RequiresDualVip()
     {
         return IsVipModeActive && !_controlPointSetupMode;
+    }
+
+    private bool ShouldStartVipWarmup()
+    {
+        return MatchRules.Mode == GameModeKind.Vip;
     }
 
     private bool IsVipTeamRequired(PlayerTeam team)
@@ -218,7 +264,6 @@ public sealed partial class SimulationWorld
         _vipSlotsByTeam.Remove(team);
         if (!TrySelectVipSlot(team, out var selectedSlot))
         {
-            TryEndRound(GetOpposingTeam(team), "vip_missing");
             return;
         }
 
@@ -391,7 +436,7 @@ public sealed partial class SimulationWorld
         TrySetNetworkPlayerClassDefinition(slot, civilianDefinition);
         if (player.Team != team)
         {
-            TrySetNetworkPlayerTeam(slot, team);
+            TrySetNetworkPlayerTeam(slot, team, respawnLivePlayerImmediately: true);
         }
 
         if (player.ClassId != PlayerClass.Quote)
@@ -423,11 +468,12 @@ public sealed partial class SimulationWorld
             return;
         }
 
-        foreach (var entry in _vipSlotsByTeam)
+        foreach (var entry in _vipSlotsByTeam.ToArray())
         {
             if (!TryGetNetworkPlayer(entry.Value, out _) || IsNetworkPlayerAwaitingJoin(entry.Value))
             {
-                TryEndRound(GetOpposingTeam(entry.Key), "vip_missing");
+                _vipSlotsByTeam.Remove(entry.Key);
+                _vipAssignmentVersion += 1;
                 return;
             }
 
@@ -435,5 +481,32 @@ public sealed partial class SimulationWorld
             // control-point match where only the VIP can capture; a dead VIP simply respawns
             // (and stays VIP), and the round resolves on the usual capture/time conditions.
         }
+    }
+
+    private bool ShouldDeferVipObjectiveResolution()
+    {
+        if (!IsVipModeActive)
+        {
+            return false;
+        }
+
+        if (IsPracticeVipRulesActive && ControlPointSetupActive)
+        {
+            return false;
+        }
+
+        if (VipWarmupActive)
+        {
+            return true;
+        }
+
+        return (IsVipTeamRequired(PlayerTeam.Red) && !HasValidVipAssignment(PlayerTeam.Red))
+            || (IsVipTeamRequired(PlayerTeam.Blue) && !HasValidVipAssignment(PlayerTeam.Blue));
+    }
+
+    private bool HasValidVipAssignment(PlayerTeam team)
+    {
+        return _vipSlotsByTeam.TryGetValue(team, out var slot)
+            && IsValidVipSlot(slot, team);
     }
 }

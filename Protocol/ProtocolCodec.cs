@@ -7,7 +7,7 @@ namespace OpenGarrison.Protocol;
 
 public static partial class ProtocolCodec
 {
-    private const int MaxPlayerNameBytes = 80;
+    public const int MaxPlayerNameBytes = 80;
     private const int MaxServerNameBytes = 128;
     private const int MaxLevelNameBytes = 64;
     private const int MaxMapUrlBytes = 512;
@@ -21,8 +21,8 @@ public static partial class ProtocolCodec
     public const int MaxPluginMessageTypeBytes = 80;
     public const int MaxPluginPayloadBytes = 1024;
     public const int CustomBubbleRgba64PayloadBytes = 72 * 58 * 8;
-    private const int MaxAssetNameBytes = 64;
-    private const int MaxKillMessageBytes = 160;
+    public const int MaxAssetNameBytes = 64;
+    public const int MaxKillMessageBytes = 160;
     private const int MaxGameplayIdBytes = 96;
     private const int MaxServerDetailsRosterEntries = 64;
     private static readonly UTF8Encoding Utf8 = new(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
@@ -217,7 +217,8 @@ public static partial class ProtocolCodec
                     reader.ReadBoolean(),
                     ReadString(reader, MaxMapUrlBytes),
                     ReadString(reader, MaxMapHashBytes),
-                    reader.ReadSingle()),
+                    reader.ReadSingle(),
+                    stream.Position < stream.Length && reader.ReadBoolean()),
                 MessageType.ConnectionDenied => new ConnectionDeniedMessage(ReadString(reader, MaxReasonBytes)),
                 MessageType.PasswordRequest => new PasswordRequestMessage(),
                 MessageType.PasswordSubmit => new PasswordSubmitMessage(ReadString(reader, MaxPasswordBytes)),
@@ -409,6 +410,7 @@ public static partial class ProtocolCodec
                 WriteString(writer, welcome.MapDownloadUrl, MaxMapUrlBytes, nameof(welcome.MapDownloadUrl));
                 WriteString(writer, welcome.MapContentHash, MaxMapHashBytes, nameof(welcome.MapContentHash));
                 writer.Write(welcome.MapScale);
+                writer.Write(welcome.LocalPredictionEnabled);
                 break;
             case ConnectionDeniedMessage denied:
                 WriteString(writer, denied.Reason, MaxReasonBytes, nameof(denied.Reason));

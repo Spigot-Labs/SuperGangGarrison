@@ -29,7 +29,7 @@ public partial class Game1
         }
 
         var keyboard = GetCurrentKeyboardState();
-        if (keyboard.IsKeyDown(Keys.Q) && !_previousKeyboard.IsKeyDown(Keys.Q))
+        if (IsClassSelectCivilianShortcutPressed(keyboard))
         {
             if (ApplyDirectClassSelection(PlayerClass.Quote))
             {
@@ -99,6 +99,12 @@ public partial class Game1
         }
     }
 
+    private bool IsClassSelectCivilianShortcutPressed(KeyboardState keyboard)
+    {
+        return (keyboard.IsKeyDown(Keys.Q) && !_previousKeyboard.IsKeyDown(Keys.Q))
+            || (IsControllerMenuInputActive() && IsControllerButtonPressed(ControllerCallMedicButton));
+    }
+
     private void DrawClassSelectHud()
     {
         var viewportWidth = ViewportWidth;
@@ -118,7 +124,8 @@ public partial class Game1
 
             var lines = GetClassSelectDescription(_classSelectHoverIndex);
             float[] lineY = [80f, 100f, 120f, 130f, 140f];
-            for (var index = 0; index < lines.Length; index += 1)
+            var lineCount = Math.Min(lines.Length, lineY.Length);
+            for (var index = 0; index < lineCount; index += 1)
             {
                 DrawBitmapFontText(lines[index], new Vector2(panelLeft + 495f, lineY[index]), Color.White * alpha, 1f);
             }
@@ -213,6 +220,7 @@ public partial class Game1
 
         if (_networkClient.IsConnected)
         {
+            ResetLocalPredictionForAuthorityTransition();
             _networkClient.QueueClassSelection(selectedClass);
             return true;
         }
@@ -345,7 +353,13 @@ public partial class Game1
             return;
         }
 
-        var perTeamFrames = Math.Max(1, sprite.Frames.Count / 2);
+        var perTeamFrames = sprite.Frames.Count / 2;
+        if (perTeamFrames <= 0)
+        {
+            _classSelectPortraitAnimationFrame = 0f;
+            return;
+        }
+
         var maxFrame = perTeamFrames - 1;
         if (maxFrame <= 0)
         {
@@ -376,7 +390,12 @@ public partial class Game1
             return false;
         }
 
-        var perTeamFrames = Math.Max(1, sprite.Frames.Count / 2);
+        var perTeamFrames = sprite.Frames.Count / 2;
+        if (perTeamFrames <= 0)
+        {
+            return false;
+        }
+
         var teamOffset = previewTeam == PlayerTeam.Blue ? perTeamFrames : 0;
         var frameIndex = teamOffset + Math.Clamp((int)MathF.Floor(_classSelectPortraitAnimationFrame), 0, perTeamFrames - 1);
         return TryDrawScreenSprite(spriteName, frameIndex, position, tint, new Vector2(4f, 4f));

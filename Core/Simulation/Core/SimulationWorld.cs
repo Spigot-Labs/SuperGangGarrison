@@ -6,7 +6,7 @@ public sealed partial class SimulationWorld
 {
     private readonly RuntimeController _runtimeController;
     private readonly RuntimeQueryController _runtimeQueryController;
-    public const int MaxPlayableNetworkPlayers = 20;
+    public const int MaxPlayableNetworkPlayers = 40;
     public const byte LocalPlayerSlot = 1;
     public const byte FirstSpectatorSlot = 128;
     public static IReadOnlyList<byte> NetworkPlayerSlots { get; } = Enumerable.Range(1, MaxPlayableNetworkPlayers).Select(static value => (byte)value).ToArray();
@@ -86,6 +86,7 @@ public sealed partial class SimulationWorld
     private readonly Dictionary<byte, PlayerInputSnapshot> _additionalNetworkPlayerPreviousInputs = new();
     private readonly Dictionary<byte, bool> _additionalNetworkPlayerAwaitingJoin = new();
     private readonly Dictionary<byte, int> _additionalNetworkPlayerRespawnTicks = new();
+    private readonly Dictionary<int, int> _jumpInputBufferTicksByPlayerId = new();
     private readonly Dictionary<byte, int> _networkPlayerPingMillisecondsBySlot = new();
     private readonly Dictionary<byte, PlayerTeam> _additionalNetworkPlayerTeams = new();
     private readonly HashSet<byte> _pendingNetworkPlayerTeamSelections = new();

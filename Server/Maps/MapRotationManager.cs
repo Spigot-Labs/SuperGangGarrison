@@ -66,17 +66,72 @@ sealed class MapRotationManager
         var currentLevelName = _world.Level.Name;
         var currentArea = _world.Level.MapAreaIndex;
         var totalAreas = _world.Level.MapAreaCount;
-        _completedRoundsOnCurrentMap += 1;
+        var isVipStagedMap = IsVipStagedMap(currentLevelName, totalAreas);
+        var isVipStageAdvance = isVipStagedMap
+            && winner == PlayerTeam.Red
+            && currentArea < totalAreas;
+        var isVipFailedOffense = isVipStagedMap
+            && winner == PlayerTeam.Blue
+            && currentArea < totalAreas;
+        var isVipFullCompletion = isVipStagedMap
+            && winner == PlayerTeam.Red
+            && currentArea >= totalAreas;
+        if (!isVipStageAdvance)
+        {
+            _completedRoundsOnCurrentMap += 1;
+        }
+
         var preserveStats = false;
         string nextMap;
         var nextArea = 1;
+        var alignLoadedMapAsExternal = false;
 
         if (_queuedNextRoundMap is { } queuedNextRoundMap)
         {
             nextMap = queuedNextRoundMap.LevelName;
             nextArea = queuedNextRoundMap.AreaIndex;
             _queuedNextRoundMap = null;
+            AlignExternalMapChange(nextMap);
+            alignLoadedMapAsExternal = true;
             _log($"[server] advancing to voted next round map {nextMap} area {nextArea}");
+        }
+        else if (isVipFailedOffense && !ShouldAdvanceRotation())
+        {
+            transition = new MapChangeTransition(
+                currentLevelName,
+                currentArea,
+                totalAreas,
+                currentLevelName,
+                currentArea,
+                PreservePlayerStats: false,
+                winner,
+                _world.MatchRules.Mode);
+            _log(BuildStagedRoundHoldLogMessage(currentLevelName, currentArea, totalAreas, "defender win"));
+            _world.RestartCurrentRoundForMapRotation(preservePlayerStats: false);
+            return true;
+        }
+        else if (isVipFullCompletion && !ShouldAdvanceRotation())
+        {
+            transition = new MapChangeTransition(
+                currentLevelName,
+                currentArea,
+                totalAreas,
+                currentLevelName,
+                NextAreaIndex: 1,
+                PreservePlayerStats: false,
+                winner,
+                _world.MatchRules.Mode);
+            _log(BuildStagedRoundHoldLogMessage(currentLevelName, currentArea, totalAreas, "offense completion"));
+            if (!_world.ApplyPendingMapChange(currentLevelName, mapAreaIndex: 1, preservePlayerStats: false))
+            {
+                _log($"[server] failed to restart {currentLevelName} area 1/{totalAreas}; restarting round.");
+                transition = default;
+                return false;
+            }
+
+            AlignCurrentMap(_world.Level.Name);
+            _log($"[server] now running {_world.Level.Name} area {_world.Level.MapAreaIndex}/{_world.Level.MapAreaCount}");
+            return true;
         }
         else if (winner == PlayerTeam.Red && currentArea < totalAreas)
         {
@@ -85,7 +140,7 @@ sealed class MapRotationManager
             preserveStats = true;
             _log($"[server] advancing to {nextMap} area {nextArea}/{totalAreas} (winner red)");
         }
-        else if (winner == PlayerTeam.Blue && currentArea < totalAreas)
+        else if (winner == PlayerTeam.Blue && currentArea < totalAreas && !isVipFailedOffense)
         {
             nextMap = currentLevelName;
             nextArea = currentArea;
@@ -148,7 +203,15 @@ sealed class MapRotationManager
             ResetPolicyCountersForCurrentMap();
         }
 
-        AlignCurrentMap(_world.Level.Name);
+        if (alignLoadedMapAsExternal)
+        {
+            AlignExternalMapChange(_world.Level.Name);
+        }
+        else
+        {
+            AlignCurrentMap(_world.Level.Name);
+        }
+
         _log($"[server] now running {_world.Level.Name} area {_world.Level.MapAreaIndex}/{_world.Level.MapAreaCount}");
         return true;
     }
@@ -225,6 +288,15 @@ sealed class MapRotationManager
         _mapRotationIndex = EnsureMapRotationIndex(_mapRotation, levelName, levelName);
     }
 
+    public void AlignExternalMapChange(string levelName)
+    {
+        var index = FindMapRotationIndex(_mapRotation, levelName);
+        if (index >= 0)
+        {
+            _mapRotationIndex = index;
+        }
+    }
+
     private void InitializeWorldLevel(string? requestedMap)
     {
         _queuedNextRoundMap = null;
@@ -286,6 +358,25 @@ sealed class MapRotationManager
                 $"[server] restarting {currentLevelName}; map rotation waits for {RotationTimeMinutes} minute(s) elapsed.",
             _ => $"[server] restarting {currentLevelName}.",
         };
+    }
+
+    private string BuildStagedRoundHoldLogMessage(string currentLevelName, int currentArea, int totalAreas, string reason)
+    {
+        return AdvanceMode switch
+        {
+            MapRotationAdvanceMode.RoundCount =>
+                $"[server] restarting {currentLevelName} area {currentArea}/{totalAreas} after {reason}; map rotation waits for round {Math.Min(_completedRoundsOnCurrentMap, RotationRoundCount)}/{RotationRoundCount}.",
+            MapRotationAdvanceMode.TimeElapsed =>
+                $"[server] restarting {currentLevelName} area {currentArea}/{totalAreas} after {reason}; map rotation waits for {RotationTimeMinutes} minute(s) elapsed.",
+            _ => $"[server] restarting {currentLevelName} area {currentArea}/{totalAreas} after {reason}.",
+        };
+    }
+
+    private bool IsVipStagedMap(string levelName, int totalAreas)
+    {
+        return totalAreas > 1
+            && (_world.MatchRules.Mode == GameModeKind.Vip
+                || levelName.StartsWith("vip_", StringComparison.OrdinalIgnoreCase));
     }
 
     private void ResetPolicyCountersForCurrentMap()

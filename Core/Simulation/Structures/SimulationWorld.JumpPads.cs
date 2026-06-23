@@ -447,6 +447,11 @@ public sealed partial class SimulationWorld
             return false;
         }
 
+        if (!TryResolveStructurePlacement(player.X, player.Y, JumpPadEntity.Width, JumpPadEntity.Height, out var placementX, out var placementY))
+        {
+            return false;
+        }
+
         foreach (var pad in _jumpPads)
         {
             if (pad.OwnerPlayerId == player.Id)
@@ -454,7 +459,7 @@ public sealed partial class SimulationWorld
                 return false;
             }
 
-            if (pad.IsNear(player.X, player.Y, JumpPadBuildProximityRadius))
+            if (pad.IsNear(placementX, placementY, JumpPadBuildProximityRadius))
             {
                 return false;
             }
@@ -465,7 +470,7 @@ public sealed partial class SimulationWorld
             return false;
         }
 
-        var entity = new JumpPadEntity(AllocateEntityId(), player.Id, player.Team, player.X, player.Y);
+        var entity = new JumpPadEntity(AllocateEntityId(), player.Id, player.Team, placementX, placementY);
         _jumpPads.Add(entity);
         _entities.Add(entity.Id, entity);
         return true;

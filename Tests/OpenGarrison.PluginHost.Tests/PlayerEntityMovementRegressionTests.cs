@@ -147,11 +147,12 @@ public sealed class PlayerEntityMovementRegressionTests
         var horizontal = CreateAirborneCivilianWithFallSpeed(500f);
 
         Assert.True(shielded.TryActivateCivvieUmbrella());
+        Assert.True(horizontal.TryActivateCivvieUmbrella());
         SetAimDirectionDegrees(shielded, 0f);
         SetAimDirectionDegrees(horizontal, 0f);
 
         AdvanceAirborneTick(shielded, level, keepUmbrellaActive: true);
-        AdvanceAirborneTick(horizontal, level);
+        AdvanceAirborneTick(horizontal, level, keepUmbrellaActive: true);
 
         Assert.True(
             MathF.Abs(shielded.VerticalSpeed - horizontal.VerticalSpeed) < 0.001f,
@@ -201,6 +202,38 @@ public sealed class PlayerEntityMovementRegressionTests
         Assert.True(
             MathF.Abs(normalAir.HorizontalSpeed) < MathF.Abs(normalReleaseSpeed) * 0.6f,
             $"expected normal air movement to bleed off faster, speed={normalAir.HorizontalSpeed:0.###}");
+    }
+
+    [Fact]
+    public void CivilianUmbrellaSlowFallAirMovementHasHorizontalSpeedBonus()
+    {
+        var level = CreateOpenLevel();
+        var player = CreateAirborneCivilianWithFallSpeed(0f);
+
+        Assert.True(player.TryActivateCivvieUmbrella());
+        SetAimDirectionDegrees(player, 270f);
+
+        for (var tick = 0; tick < 180; tick += 1)
+        {
+            AdvanceAirborneTick(player, level, moveRight: true, keepUmbrellaActive: true);
+        }
+
+        var unboostedMaxSpeed = LegacyMovementModel.GetMaxRunSpeed(
+            player.RunPower
+            * PlayerEntity.CivvieUmbrellaSlowFallRunPowerMultiplier
+            * PlayerEntity.CivvieUmbrellaSlowFallControlFactorScale);
+        var boostedMaxSpeed = LegacyMovementModel.GetMaxRunSpeed(
+            player.RunPower
+            * PlayerEntity.CivvieUmbrellaSlowFallRunPowerMultiplier
+            * PlayerEntity.CivvieUmbrellaSlowFallHorizontalSpeedMultiplier
+            * PlayerEntity.CivvieUmbrellaSlowFallControlFactorScale);
+
+        Assert.True(
+            player.HorizontalSpeed > unboostedMaxSpeed * 1.09f,
+            $"expected umbrella slow-fall horizontal speed bonus, speed={player.HorizontalSpeed:0.###} unboostedMax={unboostedMaxSpeed:0.###}");
+        Assert.True(
+            player.HorizontalSpeed <= boostedMaxSpeed + 0.001f,
+            $"expected umbrella slow-fall speed to stay under boosted max, speed={player.HorizontalSpeed:0.###} boostedMax={boostedMaxSpeed:0.###}");
     }
 
     private static float SimulateJumpApex(PlayerEntity player, SimpleLevel level, PlayerInputSnapshot initialInput)
@@ -317,14 +350,17 @@ public sealed class PlayerEntityMovementRegressionTests
     }
 
     [Fact]
-    public void CivilianPogoToggleAppliesHalfJumpBounceOrSuperJumpWhenUpHeld()
+    public void CivilianPogoToggleAppliesBaseBounceWithoutUpHeld()
     {
         var level = CreateFlatGroundLevel();
         var player = CreateGroundedCivilian(level);
         player.SyncCivviePogoSuperJumpInput(false);
         Assert.True(player.TryToggleCivviePogo());
         FulfillCivviePogoGroundBounce(player, level);
-        var baseBounceSpeed = MathF.Abs(player.VerticalSpeed);
+        Assert.False(player.IsGrounded);
+        Assert.True(
+            player.VerticalSpeed < -0.01f,
+            $"expected flat-ground pogo toggle to apply base bounce, vertical={player.VerticalSpeed:0.###}");
         player.DeactivateCivviePogo();
         LandGroundedCivilian(player, level);
 
@@ -333,8 +369,70 @@ public sealed class PlayerEntityMovementRegressionTests
         FulfillCivviePogoGroundBounce(player, level);
         var superBounceSpeed = MathF.Abs(player.VerticalSpeed);
 
-        Assert.True(baseBounceSpeed > 0f);
-        Assert.True(superBounceSpeed > baseBounceSpeed * 2f);
+        Assert.False(player.IsGrounded);
+        Assert.True(superBounceSpeed > 0f);
+    }
+
+    [Fact]
+    public void CivilianUmbrellaRequiresPogoToBeStoppedBeforeOpening()
+    {
+        var level = CreateFlatGroundLevel();
+        var player = CreateGroundedCivilian(level);
+
+        EnterCivviePogoSuperJumpAirPhase(player, level);
+
+        Assert.False(player.TryActivateCivvieUmbrella());
+        Assert.True(player.IsCivviePogoActive);
+        Assert.True(player.IsCivviePogoSuperJumpAirPhaseActive);
+        Assert.False(player.IsCivvieUmbrellaActive);
+    }
+
+    [Fact]
+    public void CivilianUmbrellaAirLiftAppliesOncePerAirtimeAndResetsOnLanding()
+    {
+        var level = CreateFlatGroundLevel();
+        var player = CreateAirborneCivilianWithFallSpeed(180f);
+        var liftSpeed = PlayerEntity.CivvieUmbrellaAirLiftSpeedPerTick
+            * LegacyMovementModel.SourceTicksPerSecond;
+
+        var firstSpeedBefore = player.VerticalSpeed;
+        Assert.True(player.TryActivateCivvieUmbrella());
+
+        var expectedFirstSpeed = -liftSpeed;
+        Assert.Equal(expectedFirstSpeed, player.VerticalSpeed, precision: 3);
+
+        player.SyncCivvieUmbrellaSecondaryInput(secondaryHeld: false);
+        var reopenSpeedBefore = player.VerticalSpeed;
+        Assert.True(player.TryActivateCivvieUmbrella());
+        Assert.Equal(reopenSpeedBefore, player.VerticalSpeed, precision: 3);
+
+        player.SyncCivvieUmbrellaSecondaryInput(secondaryHeld: false);
+        LandGroundedCivilian(player, level);
+        player.AddImpulse(0f, -60f);
+
+        var secondSpeedBefore = player.VerticalSpeed;
+        Assert.True(player.TryActivateCivvieUmbrella());
+        var expectedSecondSpeed = -liftSpeed;
+        Assert.Equal(expectedSecondSpeed, player.VerticalSpeed, precision: 3);
+        Assert.True(
+            player.VerticalSpeed <= secondSpeedBefore,
+            $"expected umbrella opening after landing reset to apply lift, before={secondSpeedBefore:0.###} after={player.VerticalSpeed:0.###}");
+    }
+
+    [Fact]
+    public void CivilianUmbrellaAirLiftReplacesUpwardVelocityInsteadOfStacking()
+    {
+        var earlyJumpPlayer = CreateAirborneCivilianWithFallSpeed(0f);
+        earlyJumpPlayer.ApplyVelocityImpulse(0f, -earlyJumpPlayer.JumpSpeed);
+        Assert.True(earlyJumpPlayer.TryActivateCivvieUmbrella());
+
+        var apexPlayer = CreateAirborneCivilianWithFallSpeed(0f);
+        Assert.True(apexPlayer.TryActivateCivvieUmbrella());
+
+        var expectedSpeed = -PlayerEntity.CivvieUmbrellaAirLiftSpeedPerTick
+            * LegacyMovementModel.SourceTicksPerSecond;
+        Assert.Equal(expectedSpeed, earlyJumpPlayer.VerticalSpeed, precision: 3);
+        Assert.Equal(expectedSpeed, apexPlayer.VerticalSpeed, precision: 3);
     }
 
     [Fact]
@@ -387,7 +485,55 @@ public sealed class PlayerEntityMovementRegressionTests
     }
 
     [Fact]
-    public void CivilianPogoStuckGroundRecoveryRebouncesWhenGroundedWithoutVerticalMovement()
+    public void CivilianPogoLandingOnLowerSurfaceAppliesPassiveBoost()
+    {
+        var level = CreateSteppedPogoLevel();
+        const float upperSurfaceY = 400f;
+        const float lowerSurfaceY = 520f;
+        var player = new PlayerEntity(1, CharacterClassCatalog.Civilian, "Test");
+        player.Spawn(PlayerTeam.Red, 128f, 0f);
+        player.TeleportTo(128f, upperSurfaceY - player.CollisionBottomOffset);
+        var deltaSeconds = 1d / SimulationConfig.DefaultTicksPerSecond;
+        var idleInput = MoveRightInput with { Right = false };
+        var startedGrounded = player.PrepareMovement(idleInput, level, PlayerTeam.Red, deltaSeconds, out _);
+        player.CompleteMovement(
+            level,
+            PlayerTeam.Red,
+            deltaSeconds,
+            startedGrounded,
+            jumped: false,
+            allowDropdownFallThrough: false);
+        Assert.True(player.IsGrounded);
+
+        player.SyncCivviePogoSuperJumpInput(false);
+        Assert.True(player.TryToggleCivviePogo());
+        FulfillCivviePogoGroundBounce(player, level);
+        Assert.False(player.IsGrounded);
+        Assert.True(
+            player.VerticalSpeed < -0.01f,
+            $"expected initial pogo activation to apply base bounce, vertical={player.VerticalSpeed:0.###}");
+
+        player.TeleportTo(512f, lowerSurfaceY - player.CollisionBottomOffset - 2f);
+        player.ApplyVelocityImpulse(0f, 300f);
+        startedGrounded = player.PrepareMovement(idleInput, level, PlayerTeam.Red, deltaSeconds, out _);
+        Assert.False(startedGrounded);
+        player.CompleteMovement(
+            level,
+            PlayerTeam.Red,
+            deltaSeconds,
+            startedGrounded,
+            jumped: false,
+            allowDropdownFallThrough: false);
+
+        Assert.True(player.IsCivviePogoActive);
+        Assert.False(player.IsGrounded);
+        Assert.True(
+            player.VerticalSpeed < -0.01f,
+            $"expected lower pogo landing to add upward boost, vertical={player.VerticalSpeed:0.###}");
+    }
+
+    [Fact]
+    public void CivilianPogoStuckGroundRecoveryDoesNotRebounceWithoutUpHeld()
     {
         var level = CreateFlatGroundLevel();
         var player = CreateGroundedCivilian(level);
@@ -397,7 +543,7 @@ public sealed class PlayerEntityMovementRegressionTests
 
         var deltaSeconds = 1d / SimulationConfig.DefaultTicksPerSecond;
         var moveInput = MoveRightInput;
-        var recovered = false;
+        var stayedGrounded = true;
         for (var tick = 0; tick < 48; tick += 1)
         {
             var startedGrounded = player.PrepareMovement(moveInput, level, PlayerTeam.Red, deltaSeconds, out _);
@@ -410,13 +556,13 @@ public sealed class PlayerEntityMovementRegressionTests
                 allowDropdownFallThrough: false);
             if (!player.IsGrounded || player.VerticalSpeed < -0.01f)
             {
-                recovered = true;
+                stayedGrounded = false;
                 break;
             }
         }
 
         Assert.True(player.IsCivviePogoActive);
-        Assert.True(recovered, "expected stuck-ground recovery to trigger another pogo bounce");
+        Assert.True(stayedGrounded, "expected idle pogo recovery to avoid adding vertical momentum");
     }
 
     private static void ClearCivviePogoNeedsGroundBounce(PlayerEntity player)
@@ -605,6 +751,34 @@ public sealed class PlayerEntityMovementRegressionTests
             roomObjects: [],
             floorY: 500f,
             solids: [new LevelSolid(0f, 500f, 2048f, 524f)],
+            importedFromSource: false);
+    }
+
+    private static SimpleLevel CreateSteppedPogoLevel()
+    {
+        return new SimpleLevel(
+            name: "movement_stepped_pogo",
+            mode: GameModeKind.CaptureTheFlag,
+            bounds: new WorldBounds(2048f, 1024f),
+            mapScale: 1f,
+            backgroundAssetName: null,
+            mapAreaIndex: 1,
+            mapAreaCount: 1,
+            localSpawn: new SpawnPoint(128f, 128f),
+            redSpawns: [new SpawnPoint(128f, 128f)],
+            blueSpawns: [new SpawnPoint(256f, 128f)],
+            intelBases:
+            [
+                new IntelBaseMarker(PlayerTeam.Red, 128f, 128f),
+                new IntelBaseMarker(PlayerTeam.Blue, 256f, 128f),
+            ],
+            roomObjects: [],
+            floorY: 900f,
+            solids:
+            [
+                new LevelSolid(0f, 400f, 256f, 624f),
+                new LevelSolid(384f, 520f, 1664f, 504f),
+            ],
             importedFromSource: false);
     }
 

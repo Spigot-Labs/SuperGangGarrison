@@ -206,6 +206,16 @@ internal sealed class ServerAdminOperations(
             return false;
         }
 
+        if (clientsGetter().ContainsKey(slot))
+        {
+            return sessionManagerGetter().TrySetClientClass(slot, playerClass);
+        }
+
+        if (botManagerGetter().BotSlots.ContainsKey(slot))
+        {
+            return TrySetBotClass(slot, playerClass);
+        }
+
         return sessionManagerGetter().TrySetClientClass(slot, playerClass);
     }
 
@@ -462,7 +472,7 @@ internal sealed class ServerAdminOperations(
 
         applyMapTransition?.Invoke(transition);
         mapRotationManagerGetter().ClearQueuedNextRoundMap();
-        mapRotationManagerGetter().AlignCurrentMap(levelName);
+        mapRotationManagerGetter().AlignExternalMapChange(levelName);
         snapshotBroadcasterGetter().ResetTransientEvents();
         log($"[server] admin changed map to {world.Level.Name} area {world.Level.MapAreaIndex}/{world.Level.MapAreaCount}");
         return true;

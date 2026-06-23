@@ -192,6 +192,12 @@ public partial class Game1 : Game
     private readonly OpenGarrisonPresenceClient _presenceClient;
     private readonly GraphicsDeviceManager _graphics;
     private RenderTarget2D? _gameRenderTarget;
+    private RenderTarget2D? _hudRenderTarget;
+    private bool _hudOpacityCompositePending;
+    private bool _deferDamageVignetteForHudOpacityComposite;
+    private bool _damageVignetteCompositeDeferred;
+    private float _activeHudElementOpacity = 1f;
+    private bool _preLaunchSplashDismissed;
     private SimulationConfig _config = null!;
     private SimulationWorld _world = null!;
     private FixedStepSimulator _simulator = null!;
@@ -306,6 +312,9 @@ public partial class Game1 : Game
     private float _portraitRumbleRemainingSeconds;
     private float _portraitRumbleIntensity;
     private int _portraitRumbleSeed;
+    private float _weaponFireHudRumbleRemainingSeconds;
+    private float _weaponFireHudRumbleIntensity;
+    private int _weaponFireHudRumbleSeed;
     private bool _damageVignetteEnabled = true;
     private int _damageVignetteIntensityPercent = ClientSettings.DefaultDamageVignetteIntensityPercent;
     private LowHealthColorMode _lowHealthColorMode = LowHealthColorMode.Red;
@@ -518,6 +527,12 @@ public partial class Game1 : Game
 
         base.Draw(gameTime);
         RecordBrowserDrawDuration(browserDrawStartTimestamp);
+
+        if (!_preLaunchSplashDismissed)
+        {
+            _preLaunchSplashDismissed = true;
+            PreLaunchSplash.Close();
+        }
     }
 
     private void LogBrowserFrameState(string phase, ref int counter, GameTime gameTime)

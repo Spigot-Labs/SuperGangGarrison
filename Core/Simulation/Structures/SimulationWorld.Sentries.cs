@@ -4,6 +4,8 @@ public sealed partial class SimulationWorld
 {
     private const float SentryBuildCost = 100f;
     private const float SentryBuildProximityRadius = 50f;
+    private const float StructurePlacementHorizontalAssistRadius = 16f;
+    private const float StructurePlacementHorizontalAssistStep = 1f;
     private const float SentryDestroyBlastRadius = 65f;
     private const float SentryDestroyKnockbackPerTick = 4f;
     private const int SentryOwnerDestroySetupGuardSeconds = 2;
@@ -127,6 +129,16 @@ public sealed partial class SimulationWorld
                 continue;
             }
 
+            if (IsSentryDisabledByHumiliation(sentry))
+            {
+                sentry.SetTarget(
+                    null,
+                    sentry.X + sentry.FacingDirectionX,
+                    sentry.Y,
+                    hasTarget: false);
+                continue;
+            }
+
             ApplyExperimentalEngineerSentryPassiveEffects(sentry, owner);
 
             var target = AcquireSentryTarget(sentry);
@@ -157,6 +169,16 @@ public sealed partial class SimulationWorld
             RegisterWorldSoundEvent("ShotgunSnd", sentry.X, sentry.Y);
             FireExperimentalSentry(sentry, owner, target.Value, reloadTicks, idleResetTicks);
         }
+    }
+
+    private bool IsSentryDisabledByHumiliation(SentryEntity sentry)
+    {
+        if (!MatchState.IsEnded)
+        {
+            return false;
+        }
+
+        return !MatchState.WinnerTeam.HasValue || sentry.Team != MatchState.WinnerTeam.Value;
     }
 
     private void AdvanceLastToDieDroneSentry(SentryEntity sentry)
@@ -561,9 +583,14 @@ public sealed partial class SimulationWorld
             return false;
         }
 
+        if (!TryResolveStructurePlacement(player.X, player.Y, SentryEntity.Width, SentryEntity.Height, out var placementX, out var placementY))
+        {
+            return false;
+        }
+
         foreach (var sentry in _sentries)
         {
-            if (sentry.IsNear(player.X, player.Y, SentryBuildProximityRadius))
+            if (sentry.IsNear(placementX, placementY, SentryBuildProximityRadius))
             {
                 return false;
             }
@@ -583,13 +610,57 @@ public sealed partial class SimulationWorld
             AllocateEntityId(),
             player.Id,
             player.Team,
-            player.X,
-            player.Y,
+            placementX,
+            placementY,
             startDirectionX,
             GetExperimentalSentryMaxHealth(player));
         _sentries.Add(sentryEntity);
         _entities.Add(sentryEntity.Id, sentryEntity);
         return true;
+    }
+
+    private bool TryResolveStructurePlacement(float x, float y, float width, float height, out float placementX, out float placementY)
+    {
+        placementX = x;
+        placementY = y;
+        if (CanPlaceStructureAt(x, y, width, height))
+        {
+            return true;
+        }
+
+        for (var offset = StructurePlacementHorizontalAssistStep;
+             offset <= StructurePlacementHorizontalAssistRadius;
+             offset += StructurePlacementHorizontalAssistStep)
+        {
+            var leftX = x - offset;
+            if (CanPlaceStructureAt(leftX, y, width, height))
+            {
+                placementX = leftX;
+                return true;
+            }
+
+            var rightX = x + offset;
+            if (CanPlaceStructureAt(rightX, y, width, height))
+            {
+                placementX = rightX;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool CanPlaceStructureAt(float x, float y, float width, float height)
+    {
+        var left = x - (width / 2f);
+        var right = x + (width / 2f);
+        var top = y - (height / 2f);
+        var bottom = y + (height / 2f);
+        return left >= 0f
+            && right <= Bounds.Width
+            && top >= 0f
+            && bottom <= Bounds.Height
+            && !Level.IntersectsSolid(left, top, right, bottom);
     }
 
     private bool TryDestroySentry(PlayerEntity player)
